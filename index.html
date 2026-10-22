@@ -2,9 +2,14 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+  />
+
   <meta name="theme-color" content="#050505" />
   <meta name="color-scheme" content="dark" />
+
   <title>Lumim</title>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -12,16 +17,16 @@
   <style>
     :root {
       --bg: #050505;
-      --surface: #111;
+      --surface: #101010;
       --surface-2: #181818;
       --surface-3: #242424;
       --line: rgba(255,255,255,.14);
       --muted: #999;
       --white: #fff;
-      --danger: #ff9e9e;
-      --focus: #fff;
+      --danger: #ff9c9c;
       --radius: 18px;
       --ease: cubic-bezier(.2,.8,.2,1);
+      --focus: #fff;
     }
 
     * {
@@ -40,7 +45,11 @@
       overflow-x: hidden;
       color: var(--white);
       background:
-        radial-gradient(circle at 85% 0%, rgba(255,255,255,.07), transparent 30rem),
+        radial-gradient(
+          circle at 85% 0%,
+          rgba(255,255,255,.08),
+          transparent 31rem
+        ),
         var(--bg);
       font-family:
         Inter,
@@ -53,6 +62,10 @@
     }
 
     body.modal-open {
+      overflow: hidden;
+    }
+
+    body.device-selection-active {
       overflow: hidden;
     }
 
@@ -84,13 +97,13 @@
       display: none !important;
     }
 
-    /* =========================
+    /* =========================================================
        SPLASH
-    ========================= */
+    ========================================================= */
 
     .splash {
       position: fixed;
-      z-index: 1000;
+      z-index: 5000;
       inset: 0;
       display: grid;
       place-items: center;
@@ -175,9 +188,443 @@
       }
     }
 
-    /* =========================
-       APP
-    ========================= */
+    /* =========================================================
+       ESCOLHA DO DISPOSITIVO
+    ========================================================= */
+
+    .device-chooser {
+      position: fixed;
+      z-index: 3000;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      overflow: auto;
+      padding: 35px 20px;
+      background: #050505;
+      opacity: 1;
+      visibility: visible;
+      transition:
+        opacity .65s var(--ease),
+        visibility .65s;
+    }
+
+    .device-chooser.hidden {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    .chooser-background {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      pointer-events: none;
+    }
+
+    .chooser-background::before,
+    .chooser-background::after {
+      content: "";
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(90px);
+      opacity: .22;
+    }
+
+    .chooser-background::before {
+      top: -180px;
+      left: -100px;
+      width: 470px;
+      height: 470px;
+      background: #6d6d6d;
+    }
+
+    .chooser-background::after {
+      right: -120px;
+      bottom: -170px;
+      width: 520px;
+      height: 520px;
+      background: #383838;
+    }
+
+    .chooser-content {
+      position: relative;
+      z-index: 1;
+      width: min(940px, 100%);
+      text-align: center;
+      animation: chooserEnter .8s var(--ease) both;
+    }
+
+    @keyframes chooserEnter {
+      from {
+        opacity: 0;
+        transform: translateY(22px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .chooser-brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 34px;
+      color: #fff;
+      font-size: 19px;
+      font-weight: 800;
+      letter-spacing: .24em;
+      text-transform: uppercase;
+    }
+
+    .chooser-brand img {
+      width: 39px;
+      height: 39px;
+      object-fit: contain;
+      filter:
+        grayscale(1)
+        brightness(1.9)
+        contrast(1.2)
+        drop-shadow(0 0 13px rgba(255,255,255,.25));
+      mix-blend-mode: screen;
+    }
+
+    .chooser-label {
+      margin-bottom: 13px;
+      color: #aaa;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .25em;
+      text-transform: uppercase;
+    }
+
+    .chooser-content h1 {
+      margin-bottom: 13px;
+      color: #fff;
+      font-size: clamp(32px, 6vw, 62px);
+      letter-spacing: -.06em;
+      line-height: .98;
+    }
+
+    .chooser-description {
+      max-width: 530px;
+      margin: 0 auto 35px;
+      color: #a9a9a9;
+      font-size: 15px;
+      line-height: 1.6;
+    }
+
+    .device-options {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+      width: 100%;
+      max-width: 840px;
+      margin: 0 auto;
+    }
+
+    .device-card {
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 23px;
+      min-height: 260px;
+      padding: 26px;
+      overflow: hidden;
+      color: #fff;
+      border: 1px solid rgba(255,255,255,.13);
+      border-radius: 25px;
+      background:
+        linear-gradient(
+          135deg,
+          rgba(255,255,255,.13),
+          rgba(255,255,255,.035)
+        );
+      box-shadow:
+        0 20px 70px rgba(0,0,0,.28),
+        inset 0 1px 0 rgba(255,255,255,.08);
+      text-align: left;
+      transition:
+        transform .35s var(--ease),
+        border-color .35s,
+        background .35s,
+        box-shadow .35s;
+    }
+
+    .device-card::before {
+      content: "";
+      position: absolute;
+      top: -100px;
+      right: -100px;
+      width: 260px;
+      height: 260px;
+      border-radius: 50%;
+      background: rgba(255,255,255,.09);
+      filter: blur(12px);
+      pointer-events: none;
+    }
+
+    .device-card:hover,
+    .device-card:focus-visible {
+      border-color: rgba(255,255,255,.72);
+      background:
+        linear-gradient(
+          135deg,
+          rgba(255,255,255,.2),
+          rgba(255,255,255,.06)
+        );
+      box-shadow:
+        0 25px 85px rgba(0,0,0,.45),
+        0 0 0 3px rgba(255,255,255,.08);
+      transform: translateY(-7px);
+    }
+
+    .device-card:active {
+      transform: translateY(-2px) scale(.99);
+    }
+
+    .device-card-content {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex: 1;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .device-card-content strong {
+      font-size: 23px;
+      letter-spacing: -.035em;
+    }
+
+    .device-card-content small {
+      max-width: 200px;
+      color: #aaa;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .device-card-action {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      margin-top: auto;
+      padding-top: 18px;
+      color: #fff;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .device-card-action b {
+      font-size: 20px;
+      font-weight: 400;
+      transition: transform .25s;
+    }
+
+    .device-card:hover .device-card-action b,
+    .device-card:focus-visible .device-card-action b {
+      transform: translateX(5px);
+    }
+
+    .device-visual {
+      position: relative;
+      z-index: 1;
+      flex: 0 0 auto;
+      width: 125px;
+      height: 170px;
+      display: grid;
+      place-items: center;
+    }
+
+    .mobile-screen {
+      position: relative;
+      width: 77px;
+      height: 150px;
+      padding: 7px;
+      border: 3px solid #e5e5e5;
+      border-radius: 17px;
+      background: #080808;
+      box-shadow:
+        0 0 0 5px rgba(255,255,255,.05),
+        0 12px 35px rgba(0,0,0,.5);
+      transform: rotate(-8deg);
+    }
+
+    .mobile-screen::before {
+      content: "";
+      position: absolute;
+      top: 5px;
+      left: 50%;
+      width: 26px;
+      height: 4px;
+      border-radius: 99px;
+      background: #aaa;
+      transform: translateX(-50%);
+    }
+
+    .mobile-screen::after {
+      content: "";
+      position: absolute;
+      bottom: 5px;
+      left: 50%;
+      width: 20px;
+      height: 3px;
+      border-radius: 99px;
+      background: #777;
+      transform: translateX(-50%);
+    }
+
+    .mobile-screen-top {
+      position: absolute;
+      top: 20px;
+      right: 8px;
+      left: 8px;
+      height: 25px;
+      border-radius: 6px;
+      background:
+        linear-gradient(
+          135deg,
+          #777,
+          #292929
+        );
+    }
+
+    .mobile-screen-content {
+      position: absolute;
+      top: 58px;
+      right: 8px;
+      left: 8px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 4px;
+    }
+
+    .mobile-screen-content i {
+      display: block;
+      aspect-ratio: 2 / 3;
+      border-radius: 3px;
+      background: #535353;
+    }
+
+    .mobile-screen-content i:nth-child(2) {
+      background: #777;
+    }
+
+    .mobile-screen-bottom {
+      position: absolute;
+      right: 8px;
+      bottom: 18px;
+      left: 8px;
+      height: 4px;
+      border-radius: 99px;
+      background: #777;
+    }
+
+    .tv-visual {
+      width: 150px;
+      height: 150px;
+      align-items: center;
+    }
+
+    .tv-screen {
+      position: relative;
+      width: 145px;
+      height: 92px;
+      padding: 7px;
+      overflow: hidden;
+      border: 3px solid #e5e5e5;
+      border-radius: 8px;
+      background: #080808;
+      box-shadow:
+        0 0 0 5px rgba(255,255,255,.05),
+        0 15px 35px rgba(0,0,0,.5);
+    }
+
+    .tv-screen-glow {
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(
+          circle at 70% 25%,
+          rgba(255,255,255,.3),
+          transparent 45%
+        ),
+        linear-gradient(135deg, #343434, #080808);
+    }
+
+    .tv-screen-content {
+      position: absolute;
+      z-index: 1;
+      right: 10px;
+      bottom: 10px;
+      left: 10px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 5px;
+    }
+
+    .tv-screen-content i {
+      display: block;
+      aspect-ratio: 16 / 10;
+      border-radius: 3px;
+      background: rgba(255,255,255,.26);
+    }
+
+    .tv-screen-content i:nth-child(2) {
+      background: rgba(255,255,255,.5);
+    }
+
+    .tv-stand {
+      position: absolute;
+      bottom: 23px;
+      left: 50%;
+      width: 42px;
+      height: 24px;
+      border-bottom: 4px solid #ddd;
+      border-left: 4px solid transparent;
+      border-right: 4px solid transparent;
+      transform: translateX(-50%);
+    }
+
+    .tv-stand::after {
+      content: "";
+      position: absolute;
+      bottom: -7px;
+      left: -37px;
+      width: 108px;
+      height: 4px;
+      border-radius: 99px;
+      background: #ddd;
+    }
+
+    .auto-device-button {
+      min-height: 43px;
+      margin-top: 27px;
+      padding: 0 17px;
+      color: #ddd;
+      border: 1px solid rgba(255,255,255,.15);
+      border-radius: 999px;
+      background: rgba(255,255,255,.05);
+      font-size: 12px;
+      transition: background .2s, color .2s;
+    }
+
+    .auto-device-button:hover,
+    .auto-device-button:focus-visible {
+      color: #050505;
+      background: #fff;
+    }
+
+    .chooser-hint {
+      margin-top: 17px;
+      color: #777;
+      font-size: 11px;
+    }
+
+    /* =========================================================
+       HEADER
+    ========================================================= */
 
     .app-shell {
       min-height: 100vh;
@@ -321,9 +768,9 @@
       object-fit: cover;
     }
 
-    /* =========================
+    /* =========================================================
        HERO
-    ========================= */
+    ========================================================= */
 
     .hero {
       position: relative;
@@ -340,7 +787,13 @@
       z-index: -2;
       inset: 0;
       background:
-        linear-gradient(90deg, #050505 0%, rgba(5,5,5,.84) 22%, rgba(5,5,5,.3) 68%, #050505 100%),
+        linear-gradient(
+          90deg,
+          #050505 0%,
+          rgba(5,5,5,.84) 22%,
+          rgba(5,5,5,.3) 68%,
+          #050505 100%
+        ),
         linear-gradient(0deg, #050505 0%, transparent 40%),
         var(--hero-image);
       background-position: center;
@@ -404,7 +857,10 @@
       padding: 0 21px;
       border-radius: 9px;
       font-weight: 700;
-      transition: transform .25s var(--ease), background .25s, opacity .25s;
+      transition:
+        transform .25s var(--ease),
+        background .25s,
+        opacity .25s;
     }
 
     .btn:hover {
@@ -434,9 +890,9 @@
       background: transparent;
     }
 
-    /* =========================
+    /* =========================================================
        CATÁLOGO
-    ========================= */
+    ========================================================= */
 
     main {
       position: relative;
@@ -497,7 +953,9 @@
       background: var(--surface-2);
       scroll-snap-align: start;
       isolation: isolate;
-      transition: transform .35s var(--ease), box-shadow .35s;
+      transition:
+        transform .35s var(--ease),
+        box-shadow .35s;
     }
 
     .media-card:hover,
@@ -511,7 +969,9 @@
       width: 100%;
       height: 100%;
       object-fit: cover;
-      transition: transform .5s var(--ease), filter .4s;
+      transition:
+        transform .5s var(--ease),
+        filter .4s;
     }
 
     .media-card:hover img,
@@ -574,9 +1034,9 @@
       text-align: center;
     }
 
-    /* =========================
+    /* =========================================================
        MODAIS
-    ========================= */
+    ========================================================= */
 
     .modal-backdrop {
       position: fixed;
@@ -737,9 +1197,9 @@
       line-height: 1.4;
     }
 
-    /* =========================
+    /* =========================================================
        PLAYER PRÓPRIO
-    ========================= */
+    ========================================================= */
 
     .player-modal {
       width: min(1200px, 100%);
@@ -959,9 +1419,9 @@
       color: #fff;
     }
 
-    /* =========================
+    /* =========================================================
        LOGIN
-    ========================= */
+    ========================================================= */
 
     .login-card {
       width: min(430px, 100%);
@@ -1019,9 +1479,9 @@
       width: 100%;
     }
 
-    /* =========================
+    /* =========================================================
        PERFIS E TOAST
-    ========================= */
+    ========================================================= */
 
     .profile-panel {
       width: min(680px, 100%);
@@ -1088,23 +1548,297 @@
       color: var(--muted);
     }
 
-    /* =========================
-       TV BOX / CELULAR
-    ========================= */
+    /* =========================================================
+       MODO MOBILE
+    ========================================================= */
 
-    @media (max-width: 800px) {
+    body.mode-mobile {
+      --mobile-padding: 16px;
+    }
+
+    body.mode-mobile .topbar {
+      height: 62px;
+      padding: 0 var(--mobile-padding);
+    }
+
+    body.mode-mobile .nav-links {
+      display: none;
+    }
+
+    body.mode-mobile .hero {
+      min-height: 620px;
+      padding: 110px var(--mobile-padding) 36px;
+      align-items: flex-end;
+    }
+
+    body.mode-mobile .hero::before {
+      background:
+        linear-gradient(
+          0deg,
+          #050505 4%,
+          rgba(5,5,5,.18) 65%,
+          rgba(5,5,5,.4)
+        ),
+        var(--hero-image);
+      background-position: 62% center;
+    }
+
+    body.mode-mobile .hero h1 {
+      font-size: clamp(38px, 12vw, 58px);
+    }
+
+    body.mode-mobile .hero-description {
+      font-size: 14px;
+    }
+
+    body.mode-mobile .content-section {
+      margin-bottom: 33px;
+      padding: 0 var(--mobile-padding);
+    }
+
+    body.mode-mobile .media-row {
+      grid-auto-columns: 142px;
+      gap: 11px;
+    }
+
+    body.mode-mobile .media-card {
+      border-radius: 14px;
+    }
+
+    body.mode-mobile .section-heading h2 {
+      font-size: 20px;
+    }
+
+    body.mode-mobile .btn {
+      min-height: 46px;
+      padding: 0 17px;
+    }
+
+    /* =========================================================
+       MODO TV
+    ========================================================= */
+
+    body.mode-tv {
+      --tv-padding: clamp(42px, 5vw, 90px);
+      --tv-focus: #fff;
+    }
+
+    body.mode-tv .topbar {
+      height: 94px;
+      padding: 0 var(--tv-padding);
+    }
+
+    body.mode-tv .mini-brand strong {
+      font-size: 22px;
+    }
+
+    body.mode-tv .mini-brand img {
+      width: 42px;
+      height: 42px;
+    }
+
+    body.mode-tv .nav-links {
+      gap: 31px;
+    }
+
+    body.mode-tv .nav-links button,
+    body.mode-tv .search-icon,
+    body.mode-tv .avatar-button {
+      min-height: 48px;
+    }
+
+    body.mode-tv .hero {
+      min-height: min(820px, 84vh);
+      padding: 150px var(--tv-padding) 95px;
+    }
+
+    body.mode-tv .hero h1 {
+      max-width: 750px;
+      font-size: clamp(56px, 6vw, 92px);
+    }
+
+    body.mode-tv .hero-description {
+      max-width: 680px;
+      font-size: 20px;
+    }
+
+    body.mode-tv .btn {
+      min-height: 58px;
+      padding: 0 28px;
+      font-size: 17px;
+    }
+
+    body.mode-tv .content-section {
+      margin-bottom: 58px;
+      padding: 0 var(--tv-padding);
+    }
+
+    body.mode-tv .section-heading h2 {
+      font-size: 31px;
+    }
+
+    body.mode-tv .media-row {
+      grid-auto-columns: clamp(205px, 15vw, 280px);
+      gap: 20px;
+    }
+
+    body.mode-tv .media-card {
+      border-radius: 20px;
+    }
+
+    body.mode-tv .card-title {
+      font-size: 16px;
+    }
+
+    body.mode-tv .card-meta {
+      font-size: 13px;
+    }
+
+    body.mode-tv .modal {
+      width: min(1180px, 92vw);
+    }
+
+    body.mode-tv .player-header {
+      min-height: 85px;
+      padding: 18px 28px;
+    }
+
+    body.mode-tv .player-header h2 {
+      font-size: 22px;
+    }
+
+    body.mode-tv .player-stage {
+      min-height: 490px;
+    }
+
+    body.mode-tv .player-controls {
+      padding: 30px 28px 22px;
+    }
+
+    body.mode-tv .player-progress {
+      height: 11px;
+      margin-bottom: 18px;
+    }
+
+    body.mode-tv .player-control-button {
+      min-width: 60px;
+      height: 56px;
+      font-size: 21px;
+    }
+
+    body.mode-tv .player-time {
+      min-width: 130px;
+      font-size: 16px;
+    }
+
+    body.mode-tv .player-volume input {
+      width: 120px;
+    }
+
+    body.mode-tv .player-speed {
+      height: 54px;
+      font-size: 16px;
+    }
+
+    body.mode-tv .player-footer {
+      padding: 19px 28px;
+      font-size: 14px;
+    }
+
+    body.mode-tv button:focus-visible,
+    body.mode-tv [tabindex]:focus-visible,
+    body.mode-tv input:focus-visible,
+    body.mode-tv select:focus-visible {
+      outline: 4px solid var(--tv-focus);
+      outline-offset: 6px;
+      box-shadow: 0 0 0 8px rgba(255,255,255,.13);
+    }
+
+    body.mode-tv .media-card:focus-visible {
+      transform: translateY(-8px) scale(1.06);
+    }
+
+    /* =========================================================
+       RESPONSIVO
+    ========================================================= */
+
+    @media (max-width: 700px) {
+      .device-chooser {
+        align-items: start;
+        padding-top: 28px;
+      }
+
+      .chooser-brand {
+        margin-bottom: 28px;
+        font-size: 16px;
+      }
+
+      .chooser-brand img {
+        width: 32px;
+        height: 32px;
+      }
+
+      .chooser-label {
+        font-size: 9px;
+      }
+
+      .chooser-description {
+        margin-bottom: 25px;
+        padding: 0 14px;
+        font-size: 13px;
+      }
+
+      .device-options {
+        grid-template-columns: 1fr;
+        gap: 12px;
+      }
+
+      .device-card {
+        min-height: 174px;
+        padding: 18px;
+        gap: 16px;
+        border-radius: 19px;
+      }
+
+      .device-visual {
+        width: 85px;
+        height: 125px;
+        transform: scale(.76);
+      }
+
+      .device-card-content strong {
+        font-size: 20px;
+      }
+
+      .device-card-content small {
+        font-size: 12px;
+      }
+
+      .device-card-action {
+        padding-top: 10px;
+        font-size: 11px;
+      }
+
+      .auto-device-button {
+        margin-top: 20px;
+      }
+
       .nav-links {
         display: none;
       }
 
       .hero {
-        min-height: 650px;
-        padding-bottom: 42px;
+        min-height: 620px;
       }
 
       .hero::before {
         background:
-          linear-gradient(0deg, #050505 4%, rgba(5,5,5,.25) 70%, rgba(5,5,5,.45)),
+          linear-gradient(
+            0deg,
+            #050505 4%,
+            rgba(5,5,5,.18) 65%,
+            rgba(5,5,5,.4)
+          ),
           var(--hero-image);
       }
 
@@ -1115,20 +1849,6 @@
       .episode .btn {
         grid-column: 2;
         width: max-content;
-      }
-    }
-
-    @media (max-width: 620px) {
-      .topbar {
-        height: 64px;
-      }
-
-      .mini-brand strong {
-        font-size: 15px;
-      }
-
-      .hero {
-        min-height: 620px;
       }
 
       .detail-banner {
@@ -1200,6 +1920,7 @@
 </head>
 
 <body>
+  <!-- INTRODUÇÃO -->
   <div id="splash" class="splash">
     <div class="leaf-intro">
       <div class="leaf-glow"></div>
@@ -1212,6 +1933,117 @@
     </div>
   </div>
 
+  <!-- ESCOLHA DO DISPOSITIVO -->
+  <div id="deviceChooser" class="device-chooser">
+    <div class="chooser-background"></div>
+
+    <div class="chooser-content">
+      <div class="chooser-brand">
+        <img
+          src="1000002482.jpg"
+          alt="Lumim"
+        />
+
+        <span>Lumim</span>
+      </div>
+
+      <div class="chooser-label">
+        EXPERIÊNCIA PERSONALIZADA
+      </div>
+
+      <h1>
+        Onde você vai assistir?
+      </h1>
+
+      <p class="chooser-description">
+        Escolha o dispositivo para ajustarmos a navegação,
+        os controles e o tamanho do conteúdo para você.
+      </p>
+
+      <div class="device-options">
+        <button
+          class="device-card device-card-mobile"
+          data-device="mobile"
+          onclick="chooseDevice('mobile')"
+        >
+          <span class="device-visual mobile-visual">
+            <span class="mobile-screen">
+              <span class="mobile-screen-top"></span>
+
+              <span class="mobile-screen-content">
+                <i></i>
+                <i></i>
+                <i></i>
+              </span>
+
+              <span class="mobile-screen-bottom"></span>
+            </span>
+          </span>
+
+          <span class="device-card-content">
+            <strong>Mobile</strong>
+
+            <small>
+              Interface compacta e otimizada
+              para toque.
+            </small>
+
+            <span class="device-card-action">
+              Continuar no mobile
+              <b>→</b>
+            </span>
+          </span>
+        </button>
+
+        <button
+          class="device-card device-card-tv"
+          data-device="tv"
+          onclick="chooseDevice('tv')"
+        >
+          <span class="device-visual tv-visual">
+            <span class="tv-screen">
+              <span class="tv-screen-glow"></span>
+
+              <span class="tv-screen-content">
+                <i></i>
+                <i></i>
+                <i></i>
+              </span>
+            </span>
+
+            <span class="tv-stand"></span>
+          </span>
+
+          <span class="device-card-content">
+            <strong>TV Box / TV</strong>
+
+            <small>
+              Botões maiores e navegação
+              pelo controle remoto.
+            </small>
+
+            <span class="device-card-action">
+              Continuar na TV
+              <b>→</b>
+            </span>
+          </span>
+        </button>
+      </div>
+
+      <button
+        class="auto-device-button"
+        onclick="detectDeviceAndContinue()"
+      >
+        Detectar automaticamente
+      </button>
+
+      <p class="chooser-hint">
+        Você poderá mudar essa opção depois nas configurações.
+      </p>
+    </div>
+  </div>
+
+  <!-- APLICAÇÃO PRINCIPAL -->
   <div id="app" class="app-shell hidden">
     <header id="topbar" class="topbar">
       <button
@@ -1226,19 +2058,32 @@
       </button>
 
       <nav class="nav-links">
-        <button data-route="inicio" class="active" onclick="goHome()">
+        <button
+          data-route="inicio"
+          class="active"
+          onclick="goHome()"
+        >
           Início
         </button>
 
-        <button data-route="filmes" onclick="openCatalog('Filmes')">
+        <button
+          data-route="filmes"
+          onclick="openCatalog('Filmes')"
+        >
           Filmes
         </button>
 
-        <button data-route="series" onclick="openCatalog('Séries')">
+        <button
+          data-route="series"
+          onclick="openCatalog('Séries')"
+        >
           Séries
         </button>
 
-        <button data-route="minha-lista" onclick="showMyList()">
+        <button
+          data-route="minha-lista"
+          onclick="showMyList()"
+        >
           Minha lista
         </button>
       </nav>
@@ -1264,7 +2109,7 @@
         <button
           class="avatar-button"
           onclick="openProfiles()"
-          aria-label="Trocar perfil"
+          aria-label="Abrir perfil e configurações"
         >
           <img id="headerAvatar" alt="Perfil atual" />
         </button>
@@ -1273,7 +2118,9 @@
 
     <section id="hero" class="hero">
       <div class="hero-content">
-        <div class="eyebrow">Destaque Lumim</div>
+        <div class="eyebrow">
+          Destaque Lumim
+        </div>
 
         <h1 id="heroTitle">
           Descubra algo extraordinário.
@@ -1284,11 +2131,17 @@
         </p>
 
         <div class="hero-actions">
-          <button id="heroPlay" class="btn btn-primary">
+          <button
+            id="heroPlay"
+            class="btn btn-primary"
+          >
             ▶ Assistir
           </button>
 
-          <button id="heroInfo" class="btn btn-secondary">
+          <button
+            id="heroInfo"
+            class="btn btn-secondary"
+          >
             ⓘ Mais informações
           </button>
         </div>
@@ -1340,40 +2193,221 @@
       playerKeyHandler: null
     };
 
-    document.addEventListener("DOMContentLoaded", async () => {
-      setTimeout(() => {
-        document.getElementById("splash").classList.add("hide");
-        document.getElementById("app").classList.remove("hidden");
-      }, 1600);
+    document.addEventListener(
+      "DOMContentLoaded",
+      async () => {
+        const savedDevice = getSavedDevice();
 
-      window.addEventListener("scroll", () => {
-        document
-          .getElementById("topbar")
-          .classList.toggle("scrolled", window.scrollY > 30);
-      });
+        if (savedDevice) {
+          applyDeviceMode(savedDevice);
+          closeDeviceChooserImmediately();
+        } else {
+          prepareDeviceChooser();
+        }
 
-      const { data } = await db.auth.getSession();
+        setTimeout(() => {
+          document
+            .getElementById("splash")
+            .classList.add("hide");
 
-      if (data.session?.user) {
-        state.user = data.session.user;
-        await initializeApp();
-      } else {
-        showLogin();
-      }
+          const app =
+            document.getElementById("app");
 
-      db.auth.onAuthStateChange(async (_event, session) => {
-        if (session?.user) {
-          state.user = session.user;
+          if (savedDevice) {
+            app.classList.remove("hidden");
+          }
+        }, 1600);
+
+        window.addEventListener(
+          "scroll",
+          () => {
+            document
+              .getElementById("topbar")
+              .classList.toggle(
+                "scrolled",
+                window.scrollY > 30
+              );
+          }
+        );
+
+        const { data } =
+          await db.auth.getSession();
+
+        if (data.session?.user) {
+          state.user = data.session.user;
           await initializeApp();
         } else {
-          state.user = null;
           showLogin();
         }
-      });
-    });
+
+        db.auth.onAuthStateChange(
+          async (_event, session) => {
+            if (session?.user) {
+              state.user = session.user;
+              await initializeApp();
+            } else {
+              state.user = null;
+              showLogin();
+            }
+          }
+        );
+      }
+    );
+
+    /* =========================================================
+       DISPOSITIVO
+    ========================================================= */
+
+    function getSavedDevice() {
+      return localStorage.getItem(
+        "lumim_device_mode"
+      );
+    }
+
+    function prepareDeviceChooser() {
+      document.body.classList.add(
+        "device-selection-active"
+      );
+
+      const app =
+        document.getElementById("app");
+
+      if (app) {
+        app.classList.add("hidden");
+      }
+
+      setTimeout(() => {
+        const firstCard =
+          document.querySelector(".device-card");
+
+        if (firstCard) {
+          firstCard.focus();
+        }
+      }, 100);
+    }
+
+    function applyDeviceMode(device) {
+      document.body.classList.remove(
+        "mode-mobile",
+        "mode-tv"
+      );
+
+      document.body.classList.add(
+        `mode-${device}`
+      );
+
+      document.documentElement.dataset.device =
+        device;
+    }
+
+    function chooseDevice(device) {
+      if (
+        device !== "mobile" &&
+        device !== "tv"
+      ) {
+        return;
+      }
+
+      localStorage.setItem(
+        "lumim_device_mode",
+        device
+      );
+
+      applyDeviceMode(device);
+      closeDeviceChooser();
+
+      const app =
+        document.getElementById("app");
+
+      if (app) {
+        app.classList.remove("hidden");
+      }
+    }
+
+    function closeDeviceChooser() {
+      const chooser =
+        document.getElementById(
+          "deviceChooser"
+        );
+
+      if (!chooser) return;
+
+      chooser.classList.add("hidden");
+      document.body.classList.remove(
+        "device-selection-active"
+      );
+
+      setTimeout(() => {
+        chooser.remove();
+      }, 700);
+    }
+
+    function closeDeviceChooserImmediately() {
+      const chooser =
+        document.getElementById(
+          "deviceChooser"
+        );
+
+      if (chooser) {
+        chooser.remove();
+      }
+
+      document.body.classList.remove(
+        "device-selection-active"
+      );
+    }
+
+    function detectDeviceAndContinue() {
+      const isLikelyTv =
+        window.matchMedia(
+          "(min-width: 1100px)"
+        ).matches &&
+        !window.matchMedia(
+          "(pointer: coarse)"
+        ).matches;
+
+      chooseDevice(
+        isLikelyTv
+          ? "tv"
+          : "mobile"
+      );
+    }
+
+    function openDeviceChooser() {
+      let chooser =
+        document.getElementById(
+          "deviceChooser"
+        );
+
+      if (!chooser) {
+        location.reload();
+        return;
+      }
+
+      chooser.classList.remove("hidden");
+      document.body.classList.add(
+        "device-selection-active"
+      );
+
+      const firstCard =
+        chooser.querySelector(".device-card");
+
+      if (firstCard) {
+        firstCard.focus();
+      }
+    }
+
+    /* =========================================================
+       INICIALIZAÇÃO
+    ========================================================= */
 
     async function initializeApp() {
       closeModal();
+
+      const app =
+        document.getElementById("app");
+
+      app.classList.remove("hidden");
 
       await Promise.all([
         loadProfiles(),
@@ -1388,16 +2422,24 @@
       renderHome();
     }
 
-    /* =========================
+    /* =========================================================
        AUTENTICAÇÃO
-    ========================= */
+    ========================================================= */
 
     function showLogin() {
-      document.getElementById("app").classList.remove("hidden");
+      const app =
+        document.getElementById("app");
 
-      document.getElementById("modalRoot").innerHTML = `
+      app.classList.remove("hidden");
+
+      document.getElementById(
+        "modalRoot"
+      ).innerHTML = `
         <div class="modal-backdrop">
-          <form class="login-card" onsubmit="handleLogin(event)">
+          <form
+            class="login-card"
+            onsubmit="handleLogin(event)"
+          >
             <div class="login-brand">
               <img
                 class="login-leaf"
@@ -1407,7 +2449,10 @@
             </div>
 
             <div class="field">
-              <label for="loginEmail">E-mail</label>
+              <label for="loginEmail">
+                E-mail
+              </label>
+
               <input
                 id="loginEmail"
                 type="email"
@@ -1417,7 +2462,10 @@
             </div>
 
             <div class="field">
-              <label for="loginPassword">Senha</label>
+              <label for="loginPassword">
+                Senha
+              </label>
+
               <input
                 id="loginPassword"
                 type="password"
@@ -1426,44 +2474,66 @@
               />
             </div>
 
-            <div id="loginError" class="login-error"></div>
+            <div
+              id="loginError"
+              class="login-error"
+            ></div>
 
-            <button class="btn btn-primary" type="submit">
+            <button
+              class="btn btn-primary"
+              type="submit"
+            >
               Entrar
             </button>
           </form>
         </div>
       `;
 
-      document.body.classList.add("modal-open");
+      document.body.classList.add(
+        "modal-open"
+      );
     }
 
     async function handleLogin(event) {
       event.preventDefault();
 
-      const email = document.getElementById("loginEmail").value.trim();
-      const password = document.getElementById("loginPassword").value;
+      const email =
+        document
+          .getElementById("loginEmail")
+          .value
+          .trim();
 
-      const { error } = await db.auth.signInWithPassword({
-        email,
-        password
-      });
+      const password =
+        document
+          .getElementById("loginPassword")
+          .value;
+
+      const { error } =
+        await db.auth.signInWithPassword({
+          email,
+          password
+        });
 
       if (error) {
-        document.getElementById("loginError").textContent =
+        document
+          .getElementById("loginError")
+          .textContent =
           "Não foi possível entrar. Verifique seus dados.";
       }
     }
 
-    /* =========================
+    /* =========================================================
        BANCO DE DADOS
-    ========================= */
+    ========================================================= */
 
     async function loadProfiles() {
-      const { data, error } = await db
-        .from("profiles")
-        .select("*")
-        .order("created_at", { ascending: true });
+      const { data, error } =
+        await db
+          .from("profiles")
+          .select("*")
+          .order("created_at", {
+            ascending: true
+          });
 
       if (error) {
         console.error(error);
@@ -1475,10 +2545,13 @@
     }
 
     async function loadCategories() {
-      const { data, error } = await db
-        .from("categories")
-        .select("*")
-        .order("position", { ascending: true });
+      const { data, error } =
+        await db
+          .from("categories")
+          .select("*")
+          .order("position", {
+            ascending: true
+          });
 
       if (error) {
         console.error(error);
@@ -1490,16 +2563,19 @@
     }
 
     async function loadTitles() {
-      const { data, error } = await db
-        .from("titles")
-        .select(`
-          *,
-          category_titles (
-            category_id,
-            categories (*)
-          )
-        `)
-        .order("created_at", { ascending: false });
+      const { data, error } =
+        await db
+          .from("titles")
+          .select(`
+            *,
+            category_titles (
+              category_id,
+              categories (*)
+            )
+          `)
+          .order("created_at", {
+            ascending: false
+          });
 
       if (error) {
         console.error(error);
@@ -1513,10 +2589,11 @@
     async function loadProgress() {
       if (!state.user) return;
 
-      const { data, error } = await db
-        .from("watch_progress")
-        .select("*")
-        .eq("user_id", state.user.id);
+      const { data, error } =
+        await db
+          .from("watch_progress")
+          .select("*")
+          .eq("user_id", state.user.id);
 
       if (error) {
         console.error(error);
@@ -1528,30 +2605,38 @@
 
       (data || []).forEach(row => {
         if (row.episode_id) {
-          state.progress[`${row.title_id}:${row.episode_id}`] = row;
+          state.progress[
+            `${row.title_id}:${row.episode_id}`
+          ] = row;
         } else {
           state.progress[row.title_id] = row;
         }
       });
     }
 
-    /* =========================
+    /* =========================================================
        HEADER E HERO
-    ========================= */
+    ========================================================= */
 
     function setCurrentProfile() {
-      const profileId = localStorage.getItem("lumim_profile_id");
+      const profileId =
+        localStorage.getItem(
+          "lumim_profile_id"
+        );
 
       state.profile =
         state.profiles.find(profile =>
-          String(profile.id) === String(profileId)
+          String(profile.id) ===
+          String(profileId)
         ) ||
         state.profiles[0] ||
         null;
     }
 
     function renderHeader() {
-      document.getElementById("headerAvatar").src =
+      document.getElementById(
+        "headerAvatar"
+      ).src =
         state.profile?.avatar_url ||
         "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80";
     }
@@ -1559,43 +2644,68 @@
     function renderHero() {
       const title =
         state.heroTitle ||
-        state.titles.find(item => item.featured) ||
+        state.titles.find(
+          item => item.featured
+        ) ||
         state.titles[0];
 
       if (!title) return;
 
       state.heroTitle = title;
 
-      document.getElementById("heroTitle").textContent =
-        title.name || title.title || "Descubra algo extraordinário.";
+      document.getElementById(
+        "heroTitle"
+      ).textContent =
+        title.name ||
+        title.title ||
+        "Descubra algo extraordinário.";
 
-      document.getElementById("heroDescription").textContent =
-        title.description || "Uma nova experiência espera por você.";
+      document.getElementById(
+        "heroDescription"
+      ).textContent =
+        title.description ||
+        "Uma nova experiência espera por você.";
 
-      document.getElementById("hero").style.setProperty(
-        "--hero-image",
-        `url("${title.backdrop_url || title.poster_url || fallbackImages[0]}")`
-      );
+      document
+        .getElementById("hero")
+        .style.setProperty(
+          "--hero-image",
+          `url("${title.backdrop_url || title.poster_url || fallbackImages[0]}")`
+        );
 
-      document.getElementById("heroPlay").onclick = () => playTitle(title);
-      document.getElementById("heroInfo").onclick = () => openTitle(title);
+      document.getElementById(
+        "heroPlay"
+      ).onclick = () => playTitle(title);
+
+      document.getElementById(
+        "heroInfo"
+      ).onclick = () => openTitle(title);
     }
 
-    /* =========================
+    /* =========================================================
        CATÁLOGO
-    ========================= */
+    ========================================================= */
 
     function renderHome() {
-      const content = document.getElementById("content");
+      const content =
+        document.getElementById(
+          "content"
+        );
+
       content.innerHTML = "";
 
-      const continueTitles = state.titles.filter(title =>
-        state.progress[title.id]?.position > 0
-      );
+      const continueTitles =
+        state.titles.filter(title =>
+          state.progress[title.id]?.position > 0
+        );
 
       if (continueTitles.length) {
         content.appendChild(
-          createSection("Continuar assistindo", continueTitles, true)
+          createSection(
+            "Continuar assistindo",
+            continueTitles,
+            true
+          )
         );
       }
 
@@ -1603,18 +2713,33 @@
         state.categories.length
           ? state.categories
           : [
-              { id: "filmes", name: "Filmes", type: "filme" },
-              { id: "series", name: "Séries", type: "série" }
+              {
+                id: "filmes",
+                name: "Filmes",
+                type: "filme"
+              },
+              {
+                id: "series",
+                name: "Séries",
+                type: "série"
+              }
             ];
 
       categories.forEach(category => {
-        const titles = state.titles.filter(title =>
-          titleMatchesCategory(title, category)
-        );
+        const titles =
+          state.titles.filter(title =>
+            titleMatchesCategory(
+              title,
+              category
+            )
+          );
 
         if (titles.length) {
           content.appendChild(
-            createSection(category.name, titles)
+            createSection(
+              category.name,
+              titles
+            )
           );
         }
       });
@@ -1630,91 +2755,172 @@
       }
     }
 
-    function titleMatchesCategory(title, category) {
-      const linked = (title.category_titles || []).some(link =>
-        String(link.category_id) === String(category.id)
-      );
+    function titleMatchesCategory(
+      title,
+      category
+    ) {
+      const linked =
+        (title.category_titles || [])
+          .some(link =>
+            String(link.category_id) ===
+            String(category.id)
+          );
 
       if (linked) return true;
 
-      const type = normalizeText(title.type);
-      const categoryType = normalizeText(category.type);
-      const categoryName = normalizeText(category.name);
+      const type =
+        normalizeText(title.type);
 
-      return type.includes(categoryType) || type.includes(categoryName);
+      const categoryType =
+        normalizeText(category.type);
+
+      const categoryName =
+        normalizeText(category.name);
+
+      return (
+        type.includes(categoryType) ||
+        type.includes(categoryName)
+      );
     }
 
-    function createSection(name, titles, showProgress = false) {
-      const section = document.createElement("section");
-      section.className = "content-section";
+    function createSection(
+      name,
+      titles,
+      showProgress = false
+    ) {
+      const section =
+        document.createElement("section");
+
+      section.className =
+        "content-section";
 
       section.innerHTML = `
         <div class="section-heading">
-          <h2>${escapeHtml(name)}</h2>
-          <button class="see-more">Ver mais</button>
+          <h2>
+            ${escapeHtml(name)}
+          </h2>
+
+          <button class="see-more">
+            Ver mais
+          </button>
         </div>
 
         <div class="media-row"></div>
       `;
 
-      section.querySelector(".see-more").onclick = () => {
-        openCatalog(name, titles);
-      };
+      section
+        .querySelector(".see-more")
+        .onclick = () => {
+          openCatalog(name, titles);
+        };
 
-      const row = section.querySelector(".media-row");
+      const row =
+        section.querySelector(
+          ".media-row"
+        );
 
-      titles.slice(0, 16).forEach(title => {
-        row.appendChild(createCard(title, showProgress));
-      });
+      titles
+        .slice(0, 16)
+        .forEach(title => {
+          row.appendChild(
+            createCard(
+              title,
+              showProgress
+            )
+          );
+        });
 
       return section;
     }
 
-    function createCard(title, showProgress = false) {
-      const card = document.createElement("article");
+    function createCard(
+      title,
+      showProgress = false
+    ) {
+      const card =
+        document.createElement("article");
+
       card.className = "media-card";
       card.tabIndex = 0;
-      card.setAttribute("role", "button");
+      card.setAttribute(
+        "role",
+        "button"
+      );
+
       card.setAttribute(
         "aria-label",
-        `Abrir ${title.name || title.title || "conteúdo"}`
+        `Abrir ${
+          title.name ||
+          title.title ||
+          "conteúdo"
+        }`
       );
 
       const image =
         title.poster_url ||
         fallbackImages[
-          Math.abs(hashCode(title.id || title.name || title.title)) %
-            fallbackImages.length
+          Math.abs(
+            hashCode(
+              title.id ||
+              title.name ||
+              title.title
+            )
+          ) % fallbackImages.length
         ];
 
-      const progress = state.progress[title.id];
+      const progress =
+        state.progress[title.id];
 
       const percentage =
         progress &&
         title.duration &&
         progress.position
-          ? Math.min(100, (progress.position / title.duration) * 100)
+          ? Math.min(
+              100,
+              (progress.position /
+                title.duration) *
+                100
+            )
           : 0;
 
       card.innerHTML = `
         <img
           src="${escapeAttribute(image)}"
-          alt="${escapeAttribute(title.name || title.title || "Título")}"
+          alt="${escapeAttribute(
+            title.name ||
+            title.title ||
+            "Título"
+          )}"
           loading="lazy"
         />
 
         <div class="card-info">
           <div class="card-title">
-            ${escapeHtml(title.name || title.title || "Sem título")}
+            ${escapeHtml(
+              title.name ||
+              title.title ||
+              "Sem título"
+            )}
           </div>
 
           <div class="card-meta">
-            <span>${escapeHtml(title.year || "")}</span>
-            <span>${escapeHtml(title.type || "Conteúdo")}</span>
+            <span>
+              ${escapeHtml(
+                title.year || ""
+              )}
+            </span>
+
+            <span>
+              ${escapeHtml(
+                title.type ||
+                "Conteúdo"
+              )}
+            </span>
           </div>
 
           ${
-            showProgress && percentage
+            showProgress &&
+            percentage
               ? `
                 <div class="progress-track">
                   <div
@@ -1728,10 +2934,14 @@
         </div>
       `;
 
-      card.onclick = () => openTitle(title);
+      card.onclick = () =>
+        openTitle(title);
 
       card.onkeydown = event => {
-        if (event.key === "Enter" || event.key === " ") {
+        if (
+          event.key === "Enter" ||
+          event.key === " "
+        ) {
           event.preventDefault();
           openTitle(title);
         }
@@ -1740,35 +2950,54 @@
       return card;
     }
 
-    function openCatalog(categoryName, suppliedTitles = null) {
+    function openCatalog(
+      categoryName,
+      suppliedTitles = null
+    ) {
       const titles =
         suppliedTitles ||
         state.titles.filter(title => {
-          const type = normalizeText(title.type);
-          const category = normalizeText(title.category);
-          const target = normalizeText(categoryName);
+          const type =
+            normalizeText(title.type);
 
-          return type.includes(target) || category.includes(target);
+          const category =
+            normalizeText(title.category);
+
+          const target =
+            normalizeText(categoryName);
+
+          return (
+            type.includes(target) ||
+            category.includes(target)
+          );
         });
 
-      const modal = createModal(`
-        <div class="detail-body" style="padding-top:35px">
-          <h2 style="margin-bottom:20px">
-            ${escapeHtml(categoryName)}
-          </h2>
-
+      const modal =
+        createModal(`
           <div
-            class="media-row"
-            style="
-              grid-template-columns:repeat(auto-fill,minmax(145px,1fr));
-              grid-auto-flow:row;
-              overflow:visible;
-            "
-          ></div>
-        </div>
-      `);
+            class="detail-body"
+            style="padding-top:35px"
+          >
+            <h2 style="margin-bottom:20px">
+              ${escapeHtml(categoryName)}
+            </h2>
 
-      const row = modal.querySelector(".media-row");
+            <div
+              class="media-row"
+              style="
+                grid-template-columns:
+                  repeat(auto-fill,minmax(145px,1fr));
+                grid-auto-flow:row;
+                overflow:visible;
+              "
+            ></div>
+          </div>
+        `);
+
+      const row =
+        modal.querySelector(
+          ".media-row"
+        );
 
       if (!titles.length) {
         row.innerHTML = `
@@ -1776,188 +3005,307 @@
             Nenhum título encontrado.
           </div>
         `;
+
         return;
       }
 
-      titles.forEach(title => row.appendChild(createCard(title)));
+      titles.forEach(title => {
+        row.appendChild(
+          createCard(title)
+        );
+      });
     }
 
-    /* =========================
-       FILMES E SÉRIES
-    ========================= */
+    /* =========================================================
+       TÍTULOS E EPISÓDIOS
+    ========================================================= */
 
     function openTitle(title) {
       state.activeTitle = title;
 
-      const type = normalizeText(title.type);
-      const isSeries = type.includes("serie") || title.is_series === true;
+      const type =
+        normalizeText(title.type);
 
-      const image = title.backdrop_url || title.poster_url || fallbackImages[0];
+      const isSeries =
+        type.includes("serie") ||
+        title.is_series === true;
 
-      const modal = createModal(`
-        <div
-          class="detail-banner"
-          style="background-image:url('${escapeAttribute(image)}')"
-        >
-          <div class="detail-content">
-            <div class="eyebrow">
-              ${escapeHtml(title.type || "Título")}
-              ·
-              ${escapeHtml(title.year || "")}
+      const image =
+        title.backdrop_url ||
+        title.poster_url ||
+        fallbackImages[0];
+
+      const modal =
+        createModal(`
+          <div
+            class="detail-banner"
+            style="
+              background-image:
+                url('${escapeAttribute(image)}')
+            "
+          >
+            <div class="detail-content">
+              <div class="eyebrow">
+                ${escapeHtml(
+                  title.type ||
+                  "Título"
+                )}
+                ·
+                ${escapeHtml(
+                  title.year || ""
+                )}
+              </div>
+
+              <h2>
+                ${escapeHtml(
+                  title.name ||
+                  title.title ||
+                  "Sem título"
+                )}
+              </h2>
+
+              <p>
+                ${escapeHtml(
+                  title.description ||
+                  "Prepare-se para assistir."
+                )}
+              </p>
+
+              ${
+                !isSeries &&
+                (
+                  title.video_url ||
+                  title.trailer_url
+                )
+                  ? `
+                    <div style="margin-top:20px">
+                      <button
+                        class="btn btn-primary"
+                        onclick="playTitle(state.activeTitle)"
+                      >
+                        ▶ Assistir
+                      </button>
+                    </div>
+                  `
+                  : ""
+              }
             </div>
+          </div>
 
-            <h2>
-              ${escapeHtml(title.name || title.title || "Sem título")}
-            </h2>
-
-            <p>
-              ${escapeHtml(title.description || "Prepare-se para assistir.")}
-            </p>
-
+          <div class="detail-body">
             ${
-              !isSeries && (title.video_url || title.trailer_url)
+              isSeries
                 ? `
-                  <div style="margin-top:20px">
-                    <button
-                      class="btn btn-primary"
-                      onclick="playTitle(state.activeTitle)"
-                    >
-                      ▶ Assistir
-                    </button>
+                  <div
+                    id="seasonBar"
+                    class="season-bar"
+                  ></div>
+
+                  <div
+                    id="episodeList"
+                    class="episode-list"
+                  >
+                    <div class="loading">
+                      Carregando episódios...
+                    </div>
                   </div>
                 `
                 : ""
             }
           </div>
-        </div>
-
-        <div class="detail-body">
-          ${
-            isSeries
-              ? `
-                <div id="seasonBar" class="season-bar"></div>
-
-                <div id="episodeList" class="episode-list">
-                  <div class="loading">
-                    Carregando episódios...
-                  </div>
-                </div>
-              `
-              : ""
-          }
-        </div>
-      `);
+        `);
 
       if (isSeries) {
         loadEpisodes(title, modal);
       }
     }
 
-    async function loadEpisodes(title, modal) {
-      const list = modal.querySelector("#episodeList");
+    async function loadEpisodes(
+      title,
+      modal
+    ) {
+      const list =
+        modal.querySelector(
+          "#episodeList"
+        );
+
       if (!list) return;
 
-      const { data, error } = await db
-        .from("episodes")
-        .select("*")
-        .eq("title_id", title.id)
-        .order("season", { ascending: true })
-        .order("episode_number", { ascending: true });
+      const { data, error } =
+        await db
+          .from("episodes")
+          .select("*")
+          .eq("title_id", title.id)
+          .order("season", {
+            ascending: true
+          })
+          .order("episode_number", {
+            ascending: true
+          });
 
-      if (error || !data?.length) {
+      if (
+        error ||
+        !data?.length
+      ) {
         list.innerHTML = `
           <div class="empty-state">
             Nenhum episódio disponível.
           </div>
         `;
+
         return;
       }
 
       const seasons = [
-        ...new Set(data.map(episode => episode.season || 1))
+        ...new Set(
+          data.map(
+            episode =>
+              episode.season || 1
+          )
+        )
       ];
 
-      const seasonBar = modal.querySelector("#seasonBar");
+      const seasonBar =
+        modal.querySelector(
+          "#seasonBar"
+        );
 
-      seasonBar.innerHTML = seasons
-        .map(season => `
-          <button
-            class="season-button ${season === seasons[0] ? "active" : ""}"
-            data-season="${season}"
-          >
-            Temporada ${season}
-          </button>
-        `)
-        .join("");
+      seasonBar.innerHTML =
+        seasons
+          .map(
+            season => `
+              <button
+                class="
+                  season-button
+                  ${
+                    season === seasons[0]
+                      ? "active"
+                      : ""
+                  }
+                "
+                data-season="${season}"
+              >
+                Temporada ${season}
+              </button>
+            `
+          )
+          .join("");
 
-      seasonBar.querySelectorAll(".season-button").forEach(button => {
-        button.onclick = () => {
-          seasonBar.querySelectorAll(".season-button").forEach(item => {
-            item.classList.remove("active");
-          });
+      seasonBar
+        .querySelectorAll(
+          ".season-button"
+        )
+        .forEach(button => {
+          button.onclick = () => {
+            seasonBar
+              .querySelectorAll(
+                ".season-button"
+              )
+              .forEach(item => {
+                item.classList.remove(
+                  "active"
+                );
+              });
 
-          button.classList.add("active");
+            button.classList.add(
+              "active"
+            );
 
-          renderEpisodes(
-            data,
-            Number(button.dataset.season),
-            list
-          );
-        };
-      });
+            renderEpisodes(
+              data,
+              Number(
+                button.dataset.season
+              ),
+              list
+            );
+          };
+        });
 
-      renderEpisodes(data, seasons[0], list);
-    }
-
-    function renderEpisodes(episodes, season, list) {
-      const selected = episodes.filter(episode =>
-        Number(episode.season || 1) === Number(season)
+      renderEpisodes(
+        data,
+        seasons[0],
+        list
       );
-
-      list.innerHTML = selected
-        .map(episode => `
-          <article class="episode">
-            <img
-              src="${escapeAttribute(
-                episode.thumbnail_url || fallbackImages[2]
-              )}"
-              alt=""
-              loading="lazy"
-            />
-
-            <div>
-              <h3>
-                ${escapeHtml(episode.episode_number || "")}.
-                ${escapeHtml(episode.name || episode.title || "Episódio")}
-              </h3>
-
-              <p>
-                ${escapeHtml(episode.description || "")}
-              </p>
-            </div>
-
-            <button
-              class="btn btn-ghost"
-              onclick='playEpisode(${safeJson(episode)})'
-            >
-              Assistir
-            </button>
-          </article>
-        `)
-        .join("");
     }
 
-    /* =========================
-       PLAYER PRÓPRIO
-    ========================= */
+    function renderEpisodes(
+      episodes,
+      season,
+      list
+    ) {
+      const selected =
+        episodes.filter(episode =>
+          Number(
+            episode.season || 1
+          ) === Number(season)
+        );
+
+      list.innerHTML =
+        selected
+          .map(
+            episode => `
+              <article class="episode">
+                <img
+                  src="${escapeAttribute(
+                    episode.thumbnail_url ||
+                    fallbackImages[2]
+                  )}"
+                  alt=""
+                  loading="lazy"
+                />
+
+                <div>
+                  <h3>
+                    ${escapeHtml(
+                      episode.episode_number ||
+                      ""
+                    )}.
+                    ${escapeHtml(
+                      episode.name ||
+                      episode.title ||
+                      "Episódio"
+                    )}
+                  </h3>
+
+                  <p>
+                    ${escapeHtml(
+                      episode.description ||
+                      ""
+                    )}
+                  </p>
+                </div>
+
+                <button
+                  class="btn btn-ghost"
+                  onclick='playEpisode(${safeJson(
+                    episode
+                  )})'
+                >
+                  Assistir
+                </button>
+              </article>
+            `
+          )
+          .join("");
+    }
+
+    /* =========================================================
+       PLAYER
+    ========================================================= */
 
     function playTitle(title) {
       if (!title) return;
 
-      const url = title.video_url || title.trailer_url || "";
+      const url =
+        title.video_url ||
+        title.trailer_url ||
+        "";
 
       if (!url.trim()) {
-        showToast("Este título ainda não possui vídeo cadastrado.");
+        showToast(
+          "Este título ainda não possui vídeo cadastrado."
+        );
+
         return;
       }
 
@@ -1970,30 +3318,53 @@
 
     function playEpisode(episode) {
       if (!episode?.video_url) {
-        showToast("Este episódio ainda não possui vídeo cadastrado.");
+        showToast(
+          "Este episódio ainda não possui vídeo cadastrado."
+        );
+
         return;
       }
 
       openEmbeddedPlayer({
-        title: state.activeTitle || { name: "Série" },
+        title:
+          state.activeTitle || {
+            name: "Série"
+          },
         url: episode.video_url,
         episode
       });
     }
 
-    function openEmbeddedPlayer({ title, url, episode = null }) {
-      const normalized = normalizeVideoUrl(url);
+    function openEmbeddedPlayer({
+      title,
+      url,
+      episode = null
+    }) {
+      const normalized =
+        normalizeVideoUrl(url);
 
-      const episodeLabel = episode
-        ? ` — Episódio ${episode.episode_number || ""}: ${episode.name || ""}`
-        : "";
+      const episodeLabel =
+        episode
+          ? ` — Episódio ${
+              episode.episode_number ||
+              ""
+            }: ${
+              episode.name || ""
+            }`
+          : "";
 
       createModal(`
         <div class="player-modal">
           <div class="player-header">
             <h2>
-              ${escapeHtml(title.name || title.title || "Reprodução")}
-              ${escapeHtml(episodeLabel)}
+              ${escapeHtml(
+                title.name ||
+                title.title ||
+                "Reprodução"
+              )}
+              ${escapeHtml(
+                episodeLabel
+              )}
             </h2>
 
             <button
@@ -2005,15 +3376,25 @@
             </button>
           </div>
 
-          <div id="playerStage" class="player-stage">
+          <div
+            id="playerStage"
+            class="player-stage"
+          >
             ${
               normalized.type === "youtube" ||
               normalized.type === "vimeo"
                 ? `
                   <iframe
-                    src="${escapeAttribute(normalized.src)}"
+                    src="${escapeAttribute(
+                      normalized.src
+                    )}"
                     title="Vídeo incorporado"
-                    allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+                    allow="
+                      autoplay;
+                      encrypted-media;
+                      picture-in-picture;
+                      fullscreen
+                    "
                     allowfullscreen
                   ></iframe>
                 `
@@ -2022,7 +3403,10 @@
           </div>
 
           <div class="player-footer">
-            <span>Player próprio do Lumim</span>
+            <span>
+              Player próprio do Lumim
+            </span>
+
             <span id="playerStatus">
               ${episode ? "Episódio" : "Filme"}
             </span>
@@ -2035,7 +3419,10 @@
         normalized.type !== "vimeo"
       ) {
         setupCustomPlayer({
-          title,
+          title: {
+            ...title,
+            __playingUrl: normalized.src
+          },
           episode
         });
       }
@@ -2066,16 +3453,26 @@
           ▶
         </button>
 
-        <div id="videoLoading" class="video-loading">
+        <div
+          id="videoLoading"
+          class="video-loading"
+        >
           Carregando vídeo...
         </div>
 
-        <div id="videoError" class="video-error hidden">
+        <div
+          id="videoError"
+          class="video-error hidden"
+        >
           Não foi possível reproduzir este vídeo.
-          Verifique se o arquivo é MP4 com vídeo H.264 e áudio AAC.
+          Verifique se o arquivo é MP4 com vídeo
+          H.264 e áudio AAC.
         </div>
 
-        <div id="playerControls" class="player-controls">
+        <div
+          id="playerControls"
+          class="player-controls"
+        >
           <div
             id="playerProgress"
             class="player-progress"
@@ -2086,8 +3483,15 @@
             aria-valuenow="0"
             tabindex="0"
           >
-            <div id="playerBuffer" class="player-progress-buffer"></div>
-            <div id="playerProgressValue" class="player-progress-value"></div>
+            <div
+              id="playerBuffer"
+              class="player-progress-buffer"
+            ></div>
+
+            <div
+              id="playerProgressValue"
+              class="player-progress-value"
+            ></div>
           </div>
 
           <div class="player-control-row">
@@ -2139,13 +3543,20 @@
               />
             </div>
 
-            <span id="playerTime" class="player-time">
+            <span
+              id="playerTime"
+              class="player-time"
+            >
               00:00 / 00:00
             </span>
 
             <div class="player-spacer"></div>
 
-            <select id="speedControl" class="player-speed" aria-label="Velocidade">
+            <select
+              id="speedControl"
+              class="player-speed"
+              aria-label="Velocidade"
+            >
               <option value="0.5">0.5x</option>
               <option value="0.75">0.75x</option>
               <option value="1" selected>1x</option>
@@ -2167,40 +3578,126 @@
       `;
     }
 
-    function setupCustomPlayer({ title, episode }) {
-      const stage = document.getElementById("playerStage");
-      const video = document.getElementById("lumimVideo");
-      const source = video.querySelector("source");
+    function setupCustomPlayer({
+      title,
+      episode
+    }) {
+      const stage =
+        document.getElementById(
+          "playerStage"
+        );
 
-      const playPause = document.getElementById("playPauseButton");
-      const centerPlay = document.getElementById("centerPlayButton");
-      const rewind = document.getElementById("rewindButton");
-      const forward = document.getElementById("forwardButton");
-      const mute = document.getElementById("muteButton");
-      const volume = document.getElementById("volumeControl");
-      const speed = document.getElementById("speedControl");
-      const fullscreen = document.getElementById("fullscreenButton");
-      const progress = document.getElementById("playerProgress");
-      const progressValue = document.getElementById("playerProgressValue");
-      const buffer = document.getElementById("playerBuffer");
-      const time = document.getElementById("playerTime");
-      const loading = document.getElementById("videoLoading");
-      const error = document.getElementById("videoError");
-      const status = document.getElementById("playerStatus");
+      const video =
+        document.getElementById(
+          "lumimVideo"
+        );
 
-      const videoUrl = title.__playingUrl || episode?.video_url || title.video_url;
+      const source =
+        video.querySelector("source");
+
+      const playPause =
+        document.getElementById(
+          "playPauseButton"
+        );
+
+      const centerPlay =
+        document.getElementById(
+          "centerPlayButton"
+        );
+
+      const rewind =
+        document.getElementById(
+          "rewindButton"
+        );
+
+      const forward =
+        document.getElementById(
+          "forwardButton"
+        );
+
+      const mute =
+        document.getElementById(
+          "muteButton"
+        );
+
+      const volume =
+        document.getElementById(
+          "volumeControl"
+        );
+
+      const speed =
+        document.getElementById(
+          "speedControl"
+        );
+
+      const fullscreen =
+        document.getElementById(
+          "fullscreenButton"
+        );
+
+      const progress =
+        document.getElementById(
+          "playerProgress"
+        );
+
+      const progressValue =
+        document.getElementById(
+          "playerProgressValue"
+        );
+
+      const buffer =
+        document.getElementById(
+          "playerBuffer"
+        );
+
+      const time =
+        document.getElementById(
+          "playerTime"
+        );
+
+      const loading =
+        document.getElementById(
+          "videoLoading"
+        );
+
+      const error =
+        document.getElementById(
+          "videoError"
+        );
+
+      const status =
+        document.getElementById(
+          "playerStatus"
+        );
+
+      const videoUrl =
+        title.__playingUrl ||
+        episode?.video_url ||
+        title.video_url;
+
       source.src = videoUrl;
       video.load();
 
-      const titleId = title?.id || null;
-      const episodeId = episode?.id || null;
+      const titleId =
+        title?.id || null;
 
-      let saved = getProgress(titleId, episodeId);
+      const episodeId =
+        episode?.id || null;
+
+      const saved =
+        getProgress(
+          titleId,
+          episodeId
+        );
+
       let controlsTimer = null;
       let progressSaveTimer = null;
 
       function togglePlay() {
-        if (video.paused || video.ended) {
+        if (
+          video.paused ||
+          video.ended
+        ) {
           video.play().catch(() => {});
         } else {
           video.pause();
@@ -2208,10 +3705,15 @@
       }
 
       function updatePlayState() {
-        const paused = video.paused || video.ended;
+        const paused =
+          video.paused ||
+          video.ended;
 
-        playPause.textContent = paused ? "▶" : "❚❚";
-        centerPlay.textContent = paused ? "▶" : "❚❚";
+        playPause.textContent =
+          paused ? "▶" : "❚❚";
+
+        centerPlay.textContent =
+          paused ? "▶" : "❚❚";
 
         centerPlay.classList.toggle(
           "hidden-control",
@@ -2220,15 +3722,19 @@
       }
 
       function updateProgress() {
-        const duration = Number(video.duration || 0);
-        const current = Number(video.currentTime || 0);
+        const duration =
+          Number(video.duration || 0);
+
+        const current =
+          Number(video.currentTime || 0);
 
         const percent =
           duration > 0
             ? (current / duration) * 100
             : 0;
 
-        progressValue.style.width = `${percent}%`;
+        progressValue.style.width =
+          `${percent}%`;
 
         progress.setAttribute(
           "aria-valuenow",
@@ -2248,50 +3754,65 @@
           return;
         }
 
-        const end = video.buffered.end(
-          video.buffered.length - 1
-        );
+        const end =
+          video.buffered.end(
+            video.buffered.length - 1
+          );
 
         buffer.style.width =
           `${(end / video.duration) * 100}%`;
       }
 
       function seekFromEvent(event) {
-        const rect = progress.getBoundingClientRect();
+        const rect =
+          progress.getBoundingClientRect();
 
-        const position = Math.max(
-          0,
-          Math.min(
-            1,
-            (event.clientX - rect.left) / rect.width
-          )
-        );
+        const position =
+          Math.max(
+            0,
+            Math.min(
+              1,
+              (event.clientX -
+                rect.left) /
+                rect.width
+            )
+          );
 
         if (video.duration) {
           video.currentTime =
-            position * video.duration;
+            position *
+            video.duration;
         }
       }
 
       function seekBy(seconds) {
-        video.currentTime = Math.max(
-          0,
-          Math.min(
-            video.duration || 0,
-            video.currentTime + seconds
-          )
-        );
+        video.currentTime =
+          Math.max(
+            0,
+            Math.min(
+              video.duration || 0,
+              video.currentTime +
+                seconds
+            )
+          );
       }
 
       function showControls() {
-        stage.classList.remove("controls-hidden");
+        stage.classList.remove(
+          "controls-hidden"
+        );
 
-        clearTimeout(controlsTimer);
+        clearTimeout(
+          controlsTimer
+        );
 
         if (!video.paused) {
-          controlsTimer = setTimeout(() => {
-            stage.classList.add("controls-hidden");
-          }, 3500);
+          controlsTimer =
+            setTimeout(() => {
+              stage.classList.add(
+                "controls-hidden"
+              );
+            }, 3500);
         }
       }
 
@@ -2304,192 +3825,342 @@
       }
 
       function saveProgressSoon() {
-        clearTimeout(progressSaveTimer);
+        clearTimeout(
+          progressSaveTimer
+        );
 
-        progressSaveTimer = setTimeout(() => {
-          savePlaybackProgress({
-            titleId,
-            episodeId,
-            position: video.currentTime,
-            duration: video.duration,
-            completed: false
-          });
-        }, 2500);
+        progressSaveTimer =
+          setTimeout(() => {
+            savePlaybackProgress({
+              titleId,
+              episodeId,
+              position:
+                video.currentTime,
+              duration:
+                video.duration,
+              completed: false
+            });
+          }, 2500);
       }
 
-      playPause.onclick = togglePlay;
-      centerPlay.onclick = togglePlay;
-      rewind.onclick = () => seekBy(-10);
-      forward.onclick = () => seekBy(10);
+      playPause.onclick =
+        togglePlay;
+
+      centerPlay.onclick =
+        togglePlay;
+
+      rewind.onclick =
+        () => seekBy(-10);
+
+      forward.onclick =
+        () => seekBy(10);
 
       mute.onclick = () => {
-        video.muted = !video.muted;
-        mute.textContent = video.muted ? "🔇" : "🔊";
+        video.muted =
+          !video.muted;
+
+        mute.textContent =
+          video.muted
+            ? "🔇"
+            : "🔊";
       };
 
       volume.oninput = () => {
-        video.volume = Number(volume.value);
-        video.muted = video.volume === 0;
-        mute.textContent = video.muted ? "🔇" : "🔊";
+        video.volume =
+          Number(volume.value);
+
+        video.muted =
+          video.volume === 0;
+
+        mute.textContent =
+          video.muted
+            ? "🔇"
+            : "🔊";
       };
 
       speed.onchange = () => {
-        video.playbackRate = Number(speed.value);
+        video.playbackRate =
+          Number(speed.value);
       };
 
-      fullscreen.onclick = toggleFullscreen;
-      progress.onclick = seekFromEvent;
+      fullscreen.onclick =
+        toggleFullscreen;
 
-      progress.onkeydown = event => {
-        if (event.key === "ArrowLeft") {
-          event.preventDefault();
-          seekBy(-10);
-        }
+      progress.onclick =
+        seekFromEvent;
 
-        if (event.key === "ArrowRight") {
-          event.preventDefault();
-          seekBy(10);
-        }
-
-        if (event.key === "Home") {
-          event.preventDefault();
-          video.currentTime = 0;
-        }
-
-        if (event.key === "End") {
-          event.preventDefault();
-          video.currentTime = video.duration || 0;
-        }
-      };
-
-      video.addEventListener("loadedmetadata", () => {
-        loading.classList.add("hidden");
-
-        const savedPosition = Number(saved?.position || 0);
-
-        if (
-          savedPosition > 0 &&
-          savedPosition < video.duration
-        ) {
-          video.currentTime = savedPosition;
-        }
-
-        updateProgress();
-
-        video.play().catch(() => {
-          updatePlayState();
-        });
-      });
-
-      video.addEventListener("play", () => {
-        updatePlayState();
-        showControls();
-      });
-
-      video.addEventListener("pause", () => {
-        updatePlayState();
-        showControls();
-      });
-
-      video.addEventListener("timeupdate", () => {
-        updateProgress();
-        saveProgressSoon();
-      });
-
-      video.addEventListener("progress", updateBuffer);
-
-      video.addEventListener("waiting", () => {
-        loading.textContent = "Carregando...";
-        loading.classList.remove("hidden");
-      });
-
-      video.addEventListener("canplay", () => {
-        loading.classList.add("hidden");
-      });
-
-      video.addEventListener("ended", async () => {
-        updatePlayState();
-
-        status.textContent = "Concluído";
-
-        await savePlaybackProgress({
-          titleId,
-          episodeId,
-          position: video.duration || 0,
-          duration: video.duration || null,
-          completed: true
-        });
-      });
-
-      video.addEventListener("error", () => {
-        loading.classList.add("hidden");
-        error.classList.remove("hidden");
-      });
-
-      stage.addEventListener("mousemove", showControls);
-      stage.addEventListener("touchstart", showControls, { passive: true });
-
-      state.playerKeyHandler = event => {
-        if (!document.getElementById("lumimVideo")) {
-          return;
-        }
-
-        const tag = event.target?.tagName;
-
-        if (tag === "INPUT" || tag === "SELECT") {
-          return;
-        }
-
-        if (event.key === " ") {
-          event.preventDefault();
-          togglePlay();
-        }
-
-        if (event.key === "Enter") {
-          event.preventDefault();
-          togglePlay();
-        }
-
-        if (event.key === "ArrowLeft") {
-          event.preventDefault();
-          seekBy(-10);
-        }
-
-        if (event.key === "ArrowRight") {
-          event.preventDefault();
-          seekBy(10);
-        }
-
-        if (event.key === "ArrowUp") {
-          event.preventDefault();
-          video.volume = Math.min(1, video.volume + .1);
-          volume.value = String(video.volume);
-          video.muted = false;
-          mute.textContent = "🔊";
-        }
-
-        if (event.key === "ArrowDown") {
-          event.preventDefault();
-          video.volume = Math.max(0, video.volume - .1);
-          volume.value = String(video.volume);
-
-          if (video.volume === 0) {
-            video.muted = true;
-            mute.textContent = "🔇";
+      progress.onkeydown =
+        event => {
+          if (
+            event.key ===
+            "ArrowLeft"
+          ) {
+            event.preventDefault();
+            seekBy(-10);
           }
-        }
 
-        if (event.key.toLowerCase() === "m") {
-          video.muted = !video.muted;
-          mute.textContent = video.muted ? "🔇" : "🔊";
-        }
+          if (
+            event.key ===
+            "ArrowRight"
+          ) {
+            event.preventDefault();
+            seekBy(10);
+          }
 
-        if (event.key.toLowerCase() === "f") {
-          toggleFullscreen();
-        }
+          if (
+            event.key ===
+            "Home"
+          ) {
+            event.preventDefault();
+            video.currentTime = 0;
+          }
 
-        showControls();
-      };
+          if (
+            event.key ===
+            "End"
+          ) {
+            event.preventDefault();
+            video.currentTime =
+              video.duration || 0;
+          }
+        };
+
+      video.addEventListener(
+        "loadedmetadata",
+        () => {
+          loading.classList.add(
+            "hidden"
+          );
+
+          const savedPosition =
+            Number(
+              saved?.position || 0
+            );
+
+          if (
+            savedPosition > 0 &&
+            savedPosition <
+              video.duration
+          ) {
+            video.currentTime =
+              savedPosition;
+          }
+
+          updateProgress();
+
+          video
+            .play()
+            .catch(() => {
+              updatePlayState();
+            });
+        }
+      );
+
+      video.addEventListener(
+        "play",
+        () => {
+          updatePlayState();
+          showControls();
+        }
+      );
+
+      video.addEventListener(
+        "pause",
+        () => {
+          updatePlayState();
+          showControls();
+        }
+      );
+
+      video.addEventListener(
+        "timeupdate",
+        () => {
+          updateProgress();
+          saveProgressSoon();
+        }
+      );
+
+      video.addEventListener(
+        "progress",
+        updateBuffer
+      );
+
+      video.addEventListener(
+        "waiting",
+        () => {
+          loading.textContent =
+            "Carregando...";
+
+          loading.classList.remove(
+            "hidden"
+          );
+        }
+      );
+
+      video.addEventListener(
+        "canplay",
+        () => {
+          loading.classList.add(
+            "hidden"
+          );
+        }
+      );
+
+      video.addEventListener(
+        "ended",
+        async () => {
+          updatePlayState();
+
+          status.textContent =
+            "Concluído";
+
+          await savePlaybackProgress({
+            titleId,
+            episodeId,
+            position:
+              video.duration || 0,
+            duration:
+              video.duration || null,
+            completed: true
+          });
+        }
+      );
+
+      video.addEventListener(
+        "error",
+        () => {
+          loading.classList.add(
+            "hidden"
+          );
+
+          error.classList.remove(
+            "hidden"
+          );
+        }
+      );
+
+      stage.addEventListener(
+        "mousemove",
+        showControls
+      );
+
+      stage.addEventListener(
+        "touchstart",
+        showControls,
+        {
+          passive: true
+        }
+      );
+
+      state.playerKeyHandler =
+        event => {
+          if (
+            !document.getElementById(
+              "lumimVideo"
+            )
+          ) {
+            return;
+          }
+
+          const tag =
+            event.target?.tagName;
+
+          if (
+            tag === "INPUT" ||
+            tag === "SELECT"
+          ) {
+            return;
+          }
+
+          if (
+            event.key === " " ||
+            event.key === "Enter"
+          ) {
+            event.preventDefault();
+            togglePlay();
+          }
+
+          if (
+            event.key ===
+            "ArrowLeft"
+          ) {
+            event.preventDefault();
+            seekBy(-10);
+          }
+
+          if (
+            event.key ===
+            "ArrowRight"
+          ) {
+            event.preventDefault();
+            seekBy(10);
+          }
+
+          if (
+            event.key ===
+            "ArrowUp"
+          ) {
+            event.preventDefault();
+
+            video.volume =
+              Math.min(
+                1,
+                video.volume + .1
+              );
+
+            volume.value =
+              String(video.volume);
+
+            video.muted = false;
+            mute.textContent = "🔊";
+          }
+
+          if (
+            event.key ===
+            "ArrowDown"
+          ) {
+            event.preventDefault();
+
+            video.volume =
+              Math.max(
+                0,
+                video.volume - .1
+              );
+
+            volume.value =
+              String(video.volume);
+
+            if (
+              video.volume === 0
+            ) {
+              video.muted = true;
+              mute.textContent =
+                "🔇";
+            }
+          }
+
+          if (
+            event.key.toLowerCase() ===
+            "m"
+          ) {
+            video.muted =
+              !video.muted;
+
+            mute.textContent =
+              video.muted
+                ? "🔇"
+                : "🔊";
+          }
+
+          if (
+            event.key.toLowerCase() ===
+            "f"
+          ) {
+            toggleFullscreen();
+          }
+
+          showControls();
+        };
 
       document.addEventListener(
         "keydown",
@@ -2507,54 +4178,89 @@
       duration,
       completed = false
     }) {
-      if (!state.user || !titleId) return;
+      if (
+        !state.user ||
+        !titleId
+      ) {
+        return;
+      }
 
       const row = {
         user_id: state.user.id,
         title_id: titleId,
-        episode_id: episodeId || null,
-        position: Number(position || 0),
-        duration: Number.isFinite(duration)
-          ? duration
-          : null,
+        episode_id:
+          episodeId || null,
+        position:
+          Number(position || 0),
+        duration:
+          Number.isFinite(duration)
+            ? duration
+            : null,
         completed,
-        updated_at: new Date().toISOString()
+        updated_at:
+          new Date().toISOString()
       };
 
-      const { data, error } = await db
-        .from("watch_progress")
-        .upsert(row, {
-          onConflict: "user_id,title_id,episode_id"
-        })
-        .select()
-        .single();
+      const { data, error } =
+        await db
+          .from("watch_progress")
+          .upsert(row, {
+            onConflict:
+              "user_id,title_id,episode_id"
+          })
+          .select()
+          .single();
 
       if (error) {
-        console.error("Erro ao salvar progresso:", error);
+        console.error(
+          "Erro ao salvar progresso:",
+          error
+        );
+
         return;
       }
 
       if (episodeId) {
-        state.progress[`${titleId}:${episodeId}`] = data;
+        state.progress[
+          `${titleId}:${episodeId}`
+        ] = data;
       } else {
-        state.progress[titleId] = data;
+        state.progress[titleId] =
+          data;
       }
     }
 
-    function getProgress(titleId, episodeId) {
-      if (!titleId) return null;
+    function getProgress(
+      titleId,
+      episodeId
+    ) {
+      if (!titleId) {
+        return null;
+      }
 
       if (episodeId) {
-        return state.progress[`${titleId}:${episodeId}`] || null;
+        return (
+          state.progress[
+            `${titleId}:${episodeId}`
+          ] || null
+        );
       }
 
-      return state.progress[titleId] || null;
+      return (
+        state.progress[titleId] ||
+        null
+      );
     }
 
-    function normalizeVideoUrl(rawUrl) {
-      const value = String(rawUrl || "").trim();
+    function normalizeVideoUrl(
+      rawUrl
+    ) {
+      const value =
+        String(rawUrl || "")
+          .trim();
 
-      const youtube = getYoutubeId(value);
+      const youtube =
+        getYoutubeId(value);
 
       if (youtube) {
         return {
@@ -2565,7 +4271,8 @@
         };
       }
 
-      const vimeo = getVimeoId(value);
+      const vimeo =
+        getVimeoId(value);
 
       if (vimeo) {
         return {
@@ -2583,24 +4290,42 @@
 
     function getYoutubeId(value) {
       try {
-        const url = new URL(value);
+        const url =
+          new URL(value);
 
         if (
-          url.hostname.includes("youtube.com") &&
-          url.pathname.startsWith("/embed/")
+          url.hostname.includes(
+            "youtube.com"
+          ) &&
+          url.pathname.startsWith(
+            "/embed/"
+          )
         ) {
-          return url.pathname.split("/embed/")[1].split("/")[0];
+          return url.pathname
+            .split("/embed/")[1]
+            .split("/")[0];
         }
 
         if (
-          url.hostname.includes("youtube.com") ||
-          url.hostname.includes("youtube-nocookie.com")
+          url.hostname.includes(
+            "youtube.com"
+          ) ||
+          url.hostname.includes(
+            "youtube-nocookie.com"
+          )
         ) {
-          return url.searchParams.get("v");
+          return url.searchParams.get(
+            "v"
+          );
         }
 
-        if (url.hostname === "youtu.be") {
-          return url.pathname.replace("/", "").split("?")[0];
+        if (
+          url.hostname ===
+          "youtu.be"
+        ) {
+          return url.pathname
+            .replace("/", "")
+            .split("?")[0];
         }
       } catch {
         return null;
@@ -2611,14 +4336,23 @@
 
     function getVimeoId(value) {
       try {
-        const url = new URL(value);
+        const url =
+          new URL(value);
 
-        if (url.hostname.includes("vimeo.com")) {
-          const parts = url.pathname.split("/").filter(Boolean);
+        if (
+          url.hostname.includes(
+            "vimeo.com"
+          )
+        ) {
+          const parts =
+            url.pathname
+              .split("/")
+              .filter(Boolean);
 
           return (
-            parts.find(part => /^d+$/.test(part)) ||
-            null
+            parts.find(part =>
+              /^d+$/.test(part)
+            ) || null
           );
         }
       } catch {
@@ -2629,13 +4363,25 @@
     }
 
     function formatTime(seconds) {
-      if (!Number.isFinite(seconds) || seconds < 0) {
+      if (
+        !Number.isFinite(seconds) ||
+        seconds < 0
+      ) {
         return "00:00";
       }
 
-      const hours = Math.floor(seconds / 3600);
-      const minutes = Math.floor((seconds % 3600) / 60);
-      const secs = Math.floor(seconds % 60);
+      const hours =
+        Math.floor(
+          seconds / 3600
+        );
+
+      const minutes =
+        Math.floor(
+          (seconds % 3600) / 60
+        );
+
+      const secs =
+        Math.floor(seconds % 60);
 
       const prefix =
         hours > 0
@@ -2649,9 +4395,9 @@
       );
     }
 
-    /* =========================
-       PERFIS E PESQUISA
-    ========================= */
+    /* =========================================================
+       PERFIS
+    ========================================================= */
 
     function openProfiles() {
       const profiles =
@@ -2660,101 +4406,182 @@
           : [
               {
                 id: "default",
-                name: state.user?.email?.split("@")[0] || "Perfil",
+                name:
+                  state.user?.email
+                    ?.split("@")[0] ||
+                  "Perfil",
                 avatar_url:
                   "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80"
               }
             ];
 
-      const modal = createModal(`
-        <div class="profile-panel">
-          <h2>Quem está assistindo?</h2>
+      const modal =
+        createModal(`
+          <div class="profile-panel">
+            <h2>
+              Quem está assistindo?
+            </h2>
 
-          <div class="profiles-grid">
-            ${profiles.map(profile => `
+            <div class="profiles-grid">
+              ${profiles
+                .map(
+                  profile => `
+                    <button
+                      class="profile-option"
+                      data-profile="${escapeAttribute(
+                        profile.id
+                      )}"
+                    >
+                      <img
+                        src="${escapeAttribute(
+                          profile.avatar_url
+                        )}"
+                        alt="${escapeAttribute(
+                          profile.name
+                        )}"
+                      />
+
+                      <span>
+                        ${escapeHtml(
+                          profile.name
+                        )}
+                      </span>
+                    </button>
+                  `
+                )
+                .join("")}
+            </div>
+
+            <div style="margin-top:28px">
               <button
-                class="profile-option"
-                data-profile="${escapeAttribute(profile.id)}"
+                class="btn btn-ghost"
+                style="width:100%"
+                onclick="
+                  closeModal();
+                  openDeviceChooser()
+                "
               >
-                <img
-                  src="${escapeAttribute(profile.avatar_url)}"
-                  alt="${escapeAttribute(profile.name)}"
-                />
-
-                <span>${escapeHtml(profile.name)}</span>
+                Trocar dispositivo
               </button>
-            `).join("")}
+            </div>
           </div>
-        </div>
-      `);
+        `);
 
-      modal.querySelectorAll(".profile-option").forEach(button => {
-        button.onclick = () => {
-          localStorage.setItem(
-            "lumim_profile_id",
-            button.dataset.profile
-          );
+      modal
+        .querySelectorAll(
+          ".profile-option"
+        )
+        .forEach(button => {
+          button.onclick = () => {
+            localStorage.setItem(
+              "lumim_profile_id",
+              button.dataset.profile
+            );
 
-          setCurrentProfile();
-          renderHeader();
-          closeModal();
+            setCurrentProfile();
+            renderHeader();
+            closeModal();
 
-          showToast(
-            `Perfil ${state.profile?.name || ""} selecionado.`
-          );
-        };
-      });
+            showToast(
+              `Perfil ${
+                state.profile?.name ||
+                ""
+              } selecionado.`
+            );
+          };
+        });
     }
 
     function showMyList() {
-      const list = state.titles.filter(title =>
-        title.is_favorite === true
-      );
+      const list =
+        state.titles.filter(
+          title =>
+            title.is_favorite === true
+        );
 
-      openCatalog("Minha lista", list);
+      openCatalog(
+        "Minha lista",
+        list
+      );
     }
 
     function toggleSearch() {
-      const wrap = document.getElementById("searchWrap");
+      const wrap =
+        document.getElementById(
+          "searchWrap"
+        );
+
       wrap.classList.toggle("open");
 
-      if (wrap.classList.contains("open")) {
-        document.getElementById("searchInput").focus();
+      if (
+        wrap.classList.contains(
+          "open"
+        )
+      ) {
+        document
+          .getElementById(
+            "searchInput"
+          )
+          .focus();
       }
     }
 
     function searchTitles(query) {
-      const value = query.trim().toLowerCase();
+      const value =
+        query
+          .trim()
+          .toLowerCase();
 
       if (!value) {
         renderHome();
         return;
       }
 
-      const results = state.titles.filter(title =>
-        String(title.name || title.title || "")
-          .toLowerCase()
-          .includes(value) ||
-        String(title.description || "")
-          .toLowerCase()
-          .includes(value)
-      );
+      const results =
+        state.titles.filter(
+          title =>
+            String(
+              title.name ||
+              title.title ||
+              ""
+            )
+              .toLowerCase()
+              .includes(value) ||
+            String(
+              title.description ||
+              ""
+            )
+              .toLowerCase()
+              .includes(value)
+        );
 
-      const content = document.getElementById("content");
+      const content =
+        document.getElementById(
+          "content"
+        );
+
       content.innerHTML = "";
 
       content.appendChild(
-        createSection(`Resultados para “${query}”`, results)
+        createSection(
+          `Resultados para “${query}”`,
+          results
+        )
       );
     }
 
     function goHome() {
-      document.querySelectorAll(".nav-links button").forEach(button => {
-        button.classList.toggle(
-          "active",
-          button.dataset.route === "inicio"
-        );
-      });
+      document
+        .querySelectorAll(
+          ".nav-links button"
+        )
+        .forEach(button => {
+          button.classList.toggle(
+            "active",
+            button.dataset.route ===
+              "inicio"
+          );
+        });
 
       window.scrollTo({
         top: 0,
@@ -2764,36 +4591,54 @@
       renderHome();
     }
 
-    /* =========================
-       MODAIS
-    ========================= */
+    /* =========================================================
+       MODAIS E NOTIFICAÇÕES
+    ========================================================= */
 
     function createModal(content) {
-      const root = document.getElementById("modalRoot");
+      const root =
+        document.getElementById(
+          "modalRoot"
+        );
 
       root.innerHTML = `
-        <div class="modal-backdrop" onclick="backdropClose(event)">
-          <section class="modal" onclick="event.stopPropagation()">
+        <div
+          class="modal-backdrop"
+          onclick="backdropClose(event)"
+        >
+          <section
+            class="modal"
+            onclick="event.stopPropagation()"
+          >
             ${content}
           </section>
         </div>
       `;
 
-      document.body.classList.add("modal-open");
+      document.body.classList.add(
+        "modal-open"
+      );
 
-      return root.querySelector(".modal");
+      return root.querySelector(
+        ".modal"
+      );
     }
 
     function backdropClose(event) {
       if (
-        event.target.classList.contains("modal-backdrop")
+        event.target.classList.contains(
+          "modal-backdrop"
+        )
       ) {
         closeModal();
       }
     }
 
     function closeModal() {
-      const video = document.getElementById("lumimVideo");
+      const video =
+        document.getElementById(
+          "lumimVideo"
+        );
 
       if (video) {
         video.pause();
@@ -2808,12 +4653,22 @@
         state.playerKeyHandler = null;
       }
 
-      document.getElementById("modalRoot").replaceChildren();
-      document.body.classList.remove("modal-open");
+      document
+        .getElementById(
+          "modalRoot"
+        )
+        .replaceChildren();
+
+      document.body.classList.remove(
+        "modal-open"
+      );
     }
 
     function showToast(message) {
-      const root = document.getElementById("toastRoot");
+      const root =
+        document.getElementById(
+          "toastRoot"
+        );
 
       root.innerHTML = `
         <div class="toast">
@@ -2826,43 +4681,77 @@
       }, 2800);
     }
 
-    /* =========================
+    /* =========================================================
        UTILITÁRIOS
-    ========================= */
+    ========================================================= */
 
     function normalizeText(value) {
       return String(value || "")
         .toLowerCase()
         .normalize("NFD")
-        .replace(/[̀-ͯ]/g, "");
+        .replace(
+          /[̀-ͯ]/g,
+          ""
+        );
     }
 
     function hashCode(value) {
       return String(value)
         .split("")
-        .reduce((hash, char) => {
-          return (
-            ((hash << 5) - hash) +
-            char.charCodeAt(0)
-          ) | 0;
-        }, 0);
+        .reduce(
+          (hash, char) => {
+            return (
+              ((hash << 5) -
+                hash) +
+              char.charCodeAt(0)
+            ) | 0;
+          },
+          0
+        );
     }
 
     function safeJson(value) {
       return JSON.stringify(value)
-        .replaceAll("&", "\\u0026")
-        .replaceAll("<", "\\u003c")
-        .replaceAll(">", "\\u003e")
-        .replaceAll("'", "\\u0027");
+        .replaceAll(
+          "&",
+          "\\u0026"
+        )
+        .replaceAll(
+          "<",
+          "\\u003c"
+        )
+        .replaceAll(
+          ">",
+          "\\u003e"
+        )
+        .replaceAll(
+          "'",
+          "\\u0027"
+        );
     }
 
     function escapeHtml(value) {
       return String(value ?? "")
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("'", "&#039;");
+        .replaceAll(
+          "&",
+          "&amp;"
+        )
+        .replaceAll(
+          "<",
+          "&lt;"
+        )
+        .replaceAll(
+          ">",
+          "&gt;"
+        )
+        .replaceAll(
+          '"',
+          "&quot;"
+        )
+        .replaceAll(
+          "'",
+          "&#039;"
+        );
     }
 
     function escapeAttribute(value) {
