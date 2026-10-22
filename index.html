@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="theme-color" content="#050505" />
   <meta name="color-scheme" content="dark" />
+
   <title>Lumim</title>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -13,10 +14,12 @@
     :root {
       --bg: #050505;
       --surface: #101010;
-      --surface-light: #181818;
-      --line: rgba(255,255,255,.12);
-      --muted: #9b9b9b;
+      --surface-2: #171717;
+      --surface-3: #202020;
+      --line: rgba(255,255,255,.13);
+      --muted: #999;
       --white: #fff;
+      --danger: #ff9b9b;
       --radius: 18px;
       --ease: cubic-bezier(.2,.8,.2,1);
     }
@@ -39,8 +42,14 @@
       background:
         radial-gradient(circle at 85% 0%, rgba(255,255,255,.07), transparent 30rem),
         var(--bg);
-      font-family: Inter, ui-sans-serif, system-ui, -apple-system,
-        BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-family:
+        Inter,
+        ui-sans-serif,
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
     }
 
     body.modal-open {
@@ -48,7 +57,8 @@
     }
 
     button,
-    input {
+    input,
+    select {
       font: inherit;
     }
 
@@ -59,6 +69,7 @@
 
     img {
       display: block;
+      max-width: 100%;
     }
 
     .hidden {
@@ -66,7 +77,7 @@
     }
 
     /* =========================================================
-       INTRODUÇÃO
+       SPLASH
     ========================================================= */
 
     .splash {
@@ -331,7 +342,7 @@
     }
 
     /* =========================================================
-       APLICAÇÃO
+       HEADER
     ========================================================= */
 
     .app-shell {
@@ -590,6 +601,12 @@
       transform: translateY(-3px) scale(1.02);
     }
 
+    .btn:disabled {
+      cursor: not-allowed;
+      opacity: .45;
+      transform: none;
+    }
+
     .btn-primary {
       color: #050505;
       background: #fff;
@@ -608,7 +625,7 @@
     }
 
     /* =========================================================
-       CATÁLOGO
+       CONTEÚDO
     ========================================================= */
 
     main {
@@ -666,7 +683,7 @@
       aspect-ratio: 2 / 3;
       overflow: hidden;
       border-radius: var(--radius);
-      background: var(--surface-light);
+      background: var(--surface-2);
       scroll-snap-align: start;
       isolation: isolate;
       transition:
@@ -760,7 +777,7 @@
       place-items: center;
       padding: 18px;
       overflow: auto;
-      background: rgba(0,0,0,.75);
+      background: rgba(0,0,0,.78);
       backdrop-filter: blur(14px);
       animation: fadeIn .25s both;
     }
@@ -917,6 +934,231 @@
     }
 
     /* =========================================================
+       PLAYER PRÓPRIO
+    ========================================================= */
+
+    .player-modal {
+      width: min(1120px, 100%);
+      padding: 0;
+      overflow: hidden;
+      background: #050505;
+    }
+
+    .player-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      min-height: 66px;
+      padding: 15px 22px;
+      border-bottom: 1px solid var(--line);
+      background: #0d0d0d;
+    }
+
+    .player-header h2 {
+      overflow: hidden;
+      padding-right: 45px;
+      font-size: 17px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .player-stage {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      min-height: 280px;
+      overflow: hidden;
+      background: #000;
+      user-select: none;
+    }
+
+    .player-stage video {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      background: #000;
+    }
+
+    .player-stage iframe {
+      display: block;
+      width: 100%;
+      height: 100%;
+      border: 0;
+      background: #000;
+    }
+
+    .video-loading {
+      position: absolute;
+      z-index: 3;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      color: #fff;
+      background: rgba(0,0,0,.3);
+      pointer-events: none;
+    }
+
+    .video-error {
+      position: absolute;
+      z-index: 4;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      padding: 30px;
+      color: #ddd;
+      background: rgba(0,0,0,.9);
+      text-align: center;
+    }
+
+    .player-center-play {
+      position: absolute;
+      z-index: 2;
+      top: 50%;
+      left: 50%;
+      display: grid;
+      place-items: center;
+      width: 70px;
+      height: 70px;
+      color: #050505;
+      border-radius: 50%;
+      background: rgba(255,255,255,.94);
+      font-size: 25px;
+      transform: translate(-50%, -50%);
+      transition:
+        opacity .25s,
+        transform .25s;
+    }
+
+    .player-center-play.hidden-control {
+      opacity: 0;
+      pointer-events: none;
+      transform: translate(-50%, -50%) scale(.8);
+    }
+
+    .player-controls {
+      position: absolute;
+      z-index: 5;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      padding: 20px 17px 13px;
+      background:
+        linear-gradient(
+          transparent,
+          rgba(0,0,0,.94) 45%
+        );
+      transition: opacity .25s;
+    }
+
+    .player-stage.controls-hidden .player-controls,
+    .player-stage.controls-hidden .player-center-play {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .player-progress {
+      position: relative;
+      width: 100%;
+      height: 5px;
+      margin-bottom: 11px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: rgba(255,255,255,.3);
+      cursor: pointer;
+    }
+
+    .player-progress-buffer {
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 0;
+      background: rgba(255,255,255,.3);
+      pointer-events: none;
+    }
+
+    .player-progress-value {
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 0;
+      background: #fff;
+      pointer-events: none;
+    }
+
+    .player-control-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .player-control-button {
+      display: grid;
+      place-items: center;
+      min-width: 34px;
+      height: 34px;
+      color: #fff;
+      border-radius: 7px;
+      background: rgba(255,255,255,.1);
+      transition: background .2s;
+    }
+
+    .player-control-button:hover {
+      background: rgba(255,255,255,.22);
+    }
+
+    .player-time {
+      min-width: 100px;
+      color: #eee;
+      font-size: 12px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .player-volume {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .player-volume input {
+      width: 80px;
+      accent-color: #fff;
+    }
+
+    .player-speed {
+      height: 32px;
+      padding: 0 6px;
+      color: #fff;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      outline: 0;
+      background: rgba(255,255,255,.1);
+    }
+
+    .player-speed option {
+      color: #000;
+      background: #fff;
+    }
+
+    .player-spacer {
+      flex: 1;
+    }
+
+    .player-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 15px;
+      padding: 14px 22px;
+      color: #a8a8a8;
+      font-size: 12px;
+      background: #0d0d0d;
+    }
+
+    .player-footer strong {
+      color: #fff;
+    }
+
+    /* =========================================================
        LOGIN
     ========================================================= */
 
@@ -992,7 +1234,7 @@
     .login-error {
       min-height: 20px;
       margin: 3px 0 12px;
-      color: #ff9999;
+      color: var(--danger);
       font-size: 12px;
     }
 
@@ -1050,7 +1292,7 @@
     }
 
     /* =========================================================
-       NOTIFICAÇÃO
+       TOAST
     ========================================================= */
 
     .toast {
@@ -1151,6 +1393,41 @@
         font-size: 9px;
         letter-spacing: .08em;
       }
+
+      .player-header {
+        padding: 14px 15px;
+      }
+
+      .player-header h2 {
+        font-size: 14px;
+      }
+
+      .player-stage {
+        min-height: 210px;
+      }
+
+      .player-control-row {
+        gap: 6px;
+      }
+
+      .player-time {
+        min-width: 78px;
+        font-size: 10px;
+      }
+
+      .player-volume input {
+        width: 52px;
+      }
+
+      .player-speed {
+        display: none;
+      }
+
+      .player-footer {
+        align-items: flex-start;
+        flex-direction: column;
+        padding: 13px 15px;
+      }
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -1166,7 +1443,7 @@
 </head>
 
 <body>
-  <!-- INTRODUÇÃO: SOMENTE A FOLHA E O MOVIMENTO ASCII -->
+  <!-- INTRODUÇÃO -->
   <div id="splash" class="splash">
     <div class="ascii-orbit orbit-one"></div>
     <div class="ascii-orbit orbit-two"></div>
@@ -1258,7 +1535,9 @@
 
     <section id="hero" class="hero">
       <div class="hero-content">
-        <div class="eyebrow">Destaque Lumim</div>
+        <div class="eyebrow">
+          Destaque Lumim
+        </div>
 
         <h1 id="heroTitle">
           Descubra algo extraordinário.
@@ -1295,7 +1574,7 @@
   <script>
     /*
       ==========================================================
-      CONFIGURAÇÃO REAL DO SUPABASE
+      CONFIGURAÇÃO SUPABASE
     ==========================================================
     */
 
@@ -1336,46 +1615,71 @@
       activeTitle: null
     };
 
-    document.addEventListener("DOMContentLoaded", async () => {
-      setTimeout(() => {
-        document.getElementById("splash").classList.add("hide");
-        document.getElementById("app").classList.remove("hidden");
-      }, 1700);
+    document.addEventListener(
+      "DOMContentLoaded",
+      async () => {
+        setTimeout(() => {
+          document
+            .getElementById("splash")
+            .classList.add("hide");
 
-      window.addEventListener("scroll", () => {
-        document
-          .getElementById("topbar")
-          .classList.toggle(
-            "scrolled",
-            window.scrollY > 30
+          document
+            .getElementById("app")
+            .classList.remove("hidden");
+        }, 1700);
+
+        window.addEventListener(
+          "scroll",
+          () => {
+            document
+              .getElementById("topbar")
+              .classList.toggle(
+                "scrolled",
+                window.scrollY > 30
+              );
+          }
+        );
+
+        document.addEventListener(
+          "keydown",
+          handleGlobalKeyboard
+        );
+
+        const {
+          data,
+          error
+        } = await db.auth.getSession();
+
+        if (error) {
+          console.error(
+            "Erro ao recuperar sessão:",
+            error
           );
-      });
 
-      const { data, error } = await db.auth.getSession();
+          showLogin();
+          return;
+        }
 
-      if (error) {
-        console.error("Erro ao recuperar sessão:", error);
-        showLogin();
-        return;
-      }
-
-      if (data.session?.user) {
-        state.user = data.session.user;
-        await initializeApp();
-      } else {
-        showLogin();
-      }
-
-      db.auth.onAuthStateChange(async (_event, session) => {
-        if (session?.user) {
-          state.user = session.user;
+        if (data.session?.user) {
+          state.user = data.session.user;
           await initializeApp();
         } else {
-          state.user = null;
           showLogin();
         }
-      });
-    });
+
+        db.auth.onAuthStateChange(
+          async (_event, session) => {
+            if (session?.user) {
+              state.user = session.user;
+              await initializeApp();
+            } else {
+              state.user = null;
+              showLogin();
+            }
+          }
+        );
+      }
+    );
 
     async function initializeApp() {
       closeModal();
@@ -1393,59 +1697,71 @@
       renderHome();
     }
 
+    /* =========================================================
+       AUTH
+    ========================================================= */
+
     function showLogin() {
-      document.getElementById("app").classList.remove("hidden");
+      document
+        .getElementById("app")
+        .classList.remove("hidden");
 
-      document.getElementById("modalRoot").innerHTML = `
-        <div class="modal-backdrop">
-          <form
-            class="login-card"
-            onsubmit="handleLogin(event)"
-          >
-            <div class="login-brand">
-              <img
-                class="login-leaf"
-                src="1000002482.jpg"
-                alt="Símbolo do Lumim"
-              />
-            </div>
-
-            <div class="field">
-              <label for="loginEmail">E-mail</label>
-
-              <input
-                id="loginEmail"
-                type="email"
-                autocomplete="email"
-                required
-              />
-            </div>
-
-            <div class="field">
-              <label for="loginPassword">Senha</label>
-
-              <input
-                id="loginPassword"
-                type="password"
-                autocomplete="current-password"
-                required
-              />
-            </div>
-
-            <div
-              id="loginError"
-              class="login-error"
-            ></div>
-
-            <button
-              class="btn btn-primary"
-              type="submit"
+      document
+        .getElementById("modalRoot")
+        .innerHTML = `
+          <div class="modal-backdrop">
+            <form
+              class="login-card"
+              onsubmit="handleLogin(event)"
             >
-              Entrar
-            </button>
-          </form>
-        </div>
-      `;
+              <div class="login-brand">
+                <img
+                  class="login-leaf"
+                  src="1000002482.jpg"
+                  alt="Símbolo do Lumim"
+                />
+              </div>
+
+              <div class="field">
+                <label for="loginEmail">
+                  E-mail
+                </label>
+
+                <input
+                  id="loginEmail"
+                  type="email"
+                  autocomplete="email"
+                  required
+                />
+              </div>
+
+              <div class="field">
+                <label for="loginPassword">
+                  Senha
+                </label>
+
+                <input
+                  id="loginPassword"
+                  type="password"
+                  autocomplete="current-password"
+                  required
+                />
+              </div>
+
+              <div
+                id="loginError"
+                class="login-error"
+              ></div>
+
+              <button
+                class="btn btn-primary"
+                type="submit"
+              >
+                Entrar
+              </button>
+            </form>
+          </div>
+        `;
 
       document.body.classList.add("modal-open");
     }
@@ -1462,11 +1778,12 @@
         .getElementById("loginPassword")
         .value;
 
-      const { error } =
-        await db.auth.signInWithPassword({
-          email,
-          password
-        });
+      const {
+        error
+      } = await db.auth.signInWithPassword({
+        email,
+        password
+      });
 
       if (error) {
         showLoginError(
@@ -1484,8 +1801,15 @@
       }
     }
 
+    /* =========================================================
+       SUPABASE DATA
+    ========================================================= */
+
     async function loadProfiles() {
-      const { data, error } = await db
+      const {
+        data,
+        error
+      } = await db
         .from("profiles")
         .select("*")
         .order("created_at", {
@@ -1493,7 +1817,11 @@
         });
 
       if (error) {
-        console.error("Erro nos perfis:", error);
+        console.error(
+          "Erro nos perfis:",
+          error
+        );
+
         state.profiles = [];
         return;
       }
@@ -1502,7 +1830,10 @@
     }
 
     async function loadCategories() {
-      const { data, error } = await db
+      const {
+        data,
+        error
+      } = await db
         .from("categories")
         .select("*")
         .order("position", {
@@ -1510,7 +1841,11 @@
         });
 
       if (error) {
-        console.error("Erro nas categorias:", error);
+        console.error(
+          "Erro nas categorias:",
+          error
+        );
+
         state.categories = [];
         return;
       }
@@ -1519,7 +1854,10 @@
     }
 
     async function loadTitles() {
-      const { data, error } = await db
+      const {
+        data,
+        error
+      } = await db
         .from("titles")
         .select(`
           *,
@@ -1533,7 +1871,11 @@
         });
 
       if (error) {
-        console.error("Erro nos títulos:", error);
+        console.error(
+          "Erro nos títulos:",
+          error
+        );
+
         state.titles = [];
         return;
       }
@@ -1544,13 +1886,20 @@
     async function loadProgress() {
       if (!state.user) return;
 
-      const { data, error } = await db
+      const {
+        data,
+        error
+      } = await db
         .from("watch_progress")
         .select("*")
         .eq("user_id", state.user.id);
 
       if (error) {
-        console.error("Erro no progresso:", error);
+        console.error(
+          "Erro no progresso:",
+          error
+        );
+
         state.progress = {};
         return;
       }
@@ -1558,17 +1907,30 @@
       state.progress = {};
 
       (data || []).forEach(row => {
-        state.progress[row.title_id] = row;
+        if (row.episode_id) {
+          state.progress[
+            `${row.title_id}:${row.episode_id}`
+          ] = row;
+        } else {
+          state.progress[row.title_id] = row;
+        }
       });
     }
 
+    /* =========================================================
+       HEADER E HERO
+    ========================================================= */
+
     function setCurrentProfile() {
       const profileId =
-        localStorage.getItem("lumim_profile_id");
+        localStorage.getItem(
+          "lumim_profile_id"
+        );
 
       state.profile =
         state.profiles.find(profile => {
-          return String(profile.id) === String(profileId);
+          return String(profile.id) ===
+            String(profileId);
         }) ||
         state.profiles[0] ||
         null;
@@ -1579,8 +1941,9 @@
         state.profile?.avatar_url ||
         "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80";
 
-      document.getElementById("headerAvatar").src =
-        avatar;
+      document
+        .getElementById("headerAvatar")
+        .src = avatar;
     }
 
     function renderHero() {
@@ -1603,37 +1966,54 @@
 
       state.heroTitle = title;
 
-      document.getElementById("heroTitle").textContent =
-        title.name ||
-        title.title ||
-        "Descubra algo extraordinário.";
+      document
+        .getElementById("heroTitle")
+        .textContent =
+          title.name ||
+          title.title ||
+          "Descubra algo extraordinário.";
 
-      document.getElementById("heroDescription").textContent =
-        title.description ||
-        "Uma nova experiência espera por você.";
+      document
+        .getElementById("heroDescription")
+        .textContent =
+          title.description ||
+          "Uma nova experiência espera por você.";
 
       document
         .getElementById("hero")
         .style
         .setProperty(
           "--hero-image",
-          `url("${title.backdrop_url || title.poster_url || fallbackImages[0]}")`
+          `url("${
+            title.backdrop_url ||
+            title.poster_url ||
+            fallbackImages[0]
+          }")`
         );
 
-      document.getElementById("heroPlay").onclick =
-        () => playTitle(title);
+      document
+        .getElementById("heroPlay")
+        .onclick = () => playTitle(title);
 
-      document.getElementById("heroInfo").onclick =
-        () => openTitle(title);
+      document
+        .getElementById("heroInfo")
+        .onclick = () => openTitle(title);
     }
 
+    /* =========================================================
+       CATÁLOGO
+    ========================================================= */
+
     function renderHome() {
-      const content = document.getElementById("content");
+      const content =
+        document.getElementById("content");
+
       content.innerHTML = "";
 
-      const continueTitles = state.titles.filter(title => {
-        return state.progress[title.id]?.position > 0;
-      });
+      const continueTitles =
+        state.titles.filter(title => {
+          return state.progress[title.id]?.position > 0;
+        });
 
       if (continueTitles.length) {
         content.appendChild(
@@ -1645,18 +2025,26 @@
         );
       }
 
-      const categories = state.categories.length
-        ? state.categories
-        : createFallbackCategories();
+      const categories =
+        state.categories.length
+          ? state.categories
+          : createFallbackCategories();
 
       categories.forEach(category => {
-        const titles = state.titles.filter(title => {
-          return titleMatchesCategory(title, category);
-        });
+        const titles =
+          state.titles.filter(title => {
+            return titleMatchesCategory(
+              title,
+              category
+            );
+          });
 
         if (titles.length) {
           content.appendChild(
-            createSection(category.name, titles)
+            createSection(
+              category.name,
+              titles
+            )
           );
         }
       });
@@ -1687,27 +2075,28 @@
       ];
     }
 
-    function titleMatchesCategory(title, category) {
-      const linked = (title.category_titles || []).some(link => {
-        return String(link.category_id) === String(category.id);
-      });
+    function titleMatchesCategory(
+      title,
+      category
+    ) {
+      const linked =
+        (title.category_titles || []).some(
+          link => {
+            return String(link.category_id) ===
+              String(category.id);
+          }
+        );
 
       if (linked) return true;
 
-      const titleType = String(title.type || "")
-        .toLowerCase()
-        .normalize("NFD")
-        .replace(/[̀-ͯ]/g, "");
+      const titleType =
+        normalizeText(title.type);
 
-      const categoryType = String(category.type || "")
-        .toLowerCase()
-        .normalize("NFD")
-        .replace(/[̀-ͯ]/g, "");
+      const categoryType =
+        normalizeText(category.type);
 
-      const categoryName = String(category.name || "")
-        .toLowerCase()
-        .normalize("NFD")
-        .replace(/[̀-ͯ]/g, "");
+      const categoryName =
+        normalizeText(category.name);
 
       return (
         titleType.includes(categoryType) ||
@@ -1723,11 +2112,14 @@
       const section =
         document.createElement("section");
 
-      section.className = "content-section";
+      section.className =
+        "content-section";
 
       section.innerHTML = `
         <div class="section-heading">
-          <h2>${escapeHtml(name)}</h2>
+          <h2>
+            ${escapeHtml(name)}
+          </h2>
 
           <button class="see-more">
             Ver mais
@@ -1739,7 +2131,9 @@
 
       section
         .querySelector(".see-more")
-        .onclick = () => openCatalog(name, titles);
+        .onclick = () => {
+          openCatalog(name, titles);
+        };
 
       const row =
         section.querySelector(".media-row");
@@ -1753,7 +2147,10 @@
       return section;
     }
 
-    function createCard(title, showProgress = false) {
+    function createCard(
+      title,
+      showProgress = false
+    ) {
       const card =
         document.createElement("article");
 
@@ -1764,11 +2161,16 @@
         title.poster_url ||
         fallbackImages[
           Math.abs(
-            hashCode(title.id || title.name)
+            hashCode(
+              title.id ||
+              title.name ||
+              title.title
+            )
           ) % fallbackImages.length
         ];
 
-      const progress = state.progress[title.id];
+      const progress =
+        state.progress[title.id];
 
       const percentage =
         progress &&
@@ -1776,7 +2178,9 @@
         progress.position
           ? Math.min(
               100,
-              (progress.position / title.duration) * 100
+              (progress.position /
+                title.duration) *
+                100
             )
           : 0;
 
@@ -1806,7 +2210,10 @@
             </span>
 
             <span>
-              ${escapeHtml(title.type || "Conteúdo")}
+              ${escapeHtml(
+                title.type ||
+                "Conteúdo"
+              )}
             </span>
           </div>
 
@@ -1825,7 +2232,9 @@
         </div>
       `;
 
-      card.onclick = () => openTitle(title);
+      card.onclick = () => {
+        openTitle(title);
+      };
 
       card.onkeydown = event => {
         if (event.key === "Enter") {
@@ -1843,15 +2252,14 @@
       const titles =
         suppliedTitles ||
         state.titles.filter(title => {
-          const type = String(title.type || "")
-            .toLowerCase();
+          const type =
+            normalizeText(title.type);
 
-          const category = String(
-            title.category || ""
-          ).toLowerCase();
+          const category =
+            normalizeText(title.category);
 
-          const target = String(categoryName || "")
-            .toLowerCase();
+          const target =
+            normalizeText(categoryName);
 
           return (
             type.includes(target) ||
@@ -1896,13 +2304,15 @@
       }
     }
 
+    /* =========================================================
+       TÍTULOS E EPISÓDIOS
+    ========================================================= */
+
     function openTitle(title) {
       state.activeTitle = title;
 
-      const normalizedType = String(title.type || "")
-        .toLowerCase()
-        .normalize("NFD")
-        .replace(/[̀-ͯ]/g, "");
+      const normalizedType =
+        normalizeText(title.type);
 
       const isSeries =
         normalizedType.includes("serie") ||
@@ -1923,7 +2333,10 @@
         >
           <div class="detail-content">
             <div class="eyebrow">
-              ${escapeHtml(title.type || "Título")}
+              ${escapeHtml(
+                title.type ||
+                "Título"
+              )}
               ·
               ${escapeHtml(title.year || "")}
             </div>
@@ -1943,14 +2356,20 @@
               )}
             </p>
 
-            <div style="margin-top:20px">
-              <button
-                class="btn btn-primary"
-                onclick="playTitle(state.activeTitle)"
-              >
-                ▶ Assistir
-              </button>
-            </div>
+            ${
+              !isSeries && title.video_url
+                ? `
+                  <div style="margin-top:20px">
+                    <button
+                      class="btn btn-primary"
+                      onclick="playTitle(state.activeTitle)"
+                    >
+                      ▶ Assistir
+                    </button>
+                  </div>
+                `
+                : ""
+            }
           </div>
         </div>
 
@@ -1988,13 +2407,19 @@
       }
     }
 
-    async function loadEpisodes(title, modal) {
+    async function loadEpisodes(
+      title,
+      modal
+    ) {
       const list =
         modal.querySelector("#episodeList");
 
       if (!list) return;
 
-      const { data, error } = await db
+      const {
+        data,
+        error
+      } = await db
         .from("episodes")
         .select("*")
         .eq("title_id", title.id)
@@ -2017,7 +2442,9 @@
 
       const seasons = [
         ...new Set(
-          data.map(episode => episode.season || 1)
+          data.map(episode => {
+            return episode.season || 1;
+          })
         )
       ];
 
@@ -2048,7 +2475,9 @@
             seasonBar
               .querySelectorAll(".season-button")
               .forEach(item => {
-                item.classList.remove("active");
+                item.classList.remove(
+                  "active"
+                );
               });
 
             button.classList.add("active");
@@ -2061,7 +2490,11 @@
           };
         });
 
-      renderEpisodes(data, seasons[0], list);
+      renderEpisodes(
+        data,
+        seasons[0],
+        list
+      );
     }
 
     function renderEpisodes(
@@ -2069,10 +2502,12 @@
       season,
       list
     ) {
-      const selected = episodes.filter(episode => {
-        return Number(episode.season || 1) ===
-          Number(season);
-      });
+      const selected =
+        episodes.filter(episode => {
+          return Number(
+            episode.season || 1
+          ) === Number(season);
+        });
 
       list.innerHTML = selected
         .map(episode => {
@@ -2090,7 +2525,8 @@
               <div>
                 <h3>
                   ${escapeHtml(
-                    episode.episode_number || ""
+                    episode.episode_number ||
+                    ""
                   )}.
                   ${escapeHtml(
                     episode.name ||
@@ -2101,7 +2537,8 @@
 
                 <p>
                   ${escapeHtml(
-                    episode.description || ""
+                    episode.description ||
+                    ""
                   )}
                 </p>
               </div>
@@ -2118,49 +2555,1059 @@
         .join("");
     }
 
-    function playEpisode(episode) {
-      if (episode.video_url) {
-        window.open(
-          episode.video_url,
-          "_blank",
-          "noopener,noreferrer"
-        );
-      } else {
-        showToast("Este episódio foi selecionado.");
-      }
-    }
+    /* =========================================================
+       PLAYER
+    ========================================================= */
 
     function playTitle(title) {
       if (!title) return;
 
-      if (title.video_url) {
-        window.open(
-          title.video_url,
-          "_blank",
-          "noopener,noreferrer"
+      const videoUrl =
+        title.video_url ||
+        title.trailer_url ||
+        "";
+
+      if (!videoUrl.trim()) {
+        showToast(
+          "Este título ainda não possui vídeo cadastrado."
         );
-      } else {
-        showToast("Este conteúdo foi selecionado.");
+
+        return;
+      }
+
+      openEmbeddedPlayer({
+        title,
+        url: videoUrl,
+        episode: null
+      });
+    }
+
+    function playEpisode(episode) {
+      if (!episode || !episode.video_url) {
+        showToast(
+          "Este episódio ainda não possui vídeo cadastrado."
+        );
+
+        return;
+      }
+
+      const series =
+        state.activeTitle || {
+          name: "Série"
+        };
+
+      openEmbeddedPlayer({
+        title: series,
+        url: episode.video_url,
+        episode
+      });
+    }
+
+    function openEmbeddedPlayer({
+      title,
+      url,
+      episode = null
+    }) {
+      const cleanUrl =
+        String(url || "").trim();
+
+      if (!cleanUrl) {
+        showToast(
+          "URL do vídeo não encontrada."
+        );
+
+        return;
+      }
+
+      const media =
+        createEmbeddedMedia(cleanUrl);
+
+      const episodeName = episode
+        ? `Episódio ${
+            episode.episode_number || ""
+          } · ${
+            episode.name || ""
+          }`
+        : "";
+
+      createModal(`
+        <div class="player-modal">
+          <div class="player-header">
+            <h2>
+              ${escapeHtml(
+                title.name ||
+                title.title ||
+                "Reprodução"
+              )}
+              ${
+                episodeName
+                  ? ` — ${escapeHtml(
+                      episodeName
+                    )}`
+                  : ""
+              }
+            </h2>
+
+            <button
+              class="modal-close"
+              onclick="closeModal()"
+              aria-label="Fechar player"
+            >
+              ×
+            </button>
+          </div>
+
+          <div
+            id="playerStage"
+            class="player-stage"
+          >
+            ${media.html}
+          </div>
+
+          <div class="player-footer">
+            <span>
+              Player próprio do Lumim
+            </span>
+
+            <span id="playerStatus">
+              ${episode ? "Episódio" : "Filme"}
+            </span>
+          </div>
+        </div>
+      `);
+
+      if (media.type === "html-video") {
+        setupCustomVideoPlayer({
+          title,
+          episode
+        });
       }
     }
 
+    function createEmbeddedMedia(rawUrl) {
+      const normalized =
+        normalizeVideoUrl(rawUrl);
+
+      if (
+        normalized.type === "youtube" ||
+        normalized.type === "vimeo"
+      ) {
+        return {
+          type: "iframe",
+          html: `
+            <iframe
+              src="${escapeAttribute(
+                normalized.src
+              )}"
+              title="Vídeo incorporado"
+              allow="
+                autoplay;
+                encrypted-media;
+                picture-in-picture;
+                fullscreen
+              "
+              allowfullscreen
+              referrerpolicy="
+                strict-origin-when-cross-origin
+              "
+            ></iframe>
+          `
+        };
+      }
+
+      return {
+        type: "html-video",
+        html: `
+          <video
+            id="lumimVideo"
+            preload="metadata"
+            playsinline
+            crossorigin="anonymous"
+          >
+            <source
+              src="${escapeAttribute(
+                normalized.src
+              )}"
+              type="${escapeAttribute(
+                getVideoMimeType(
+                  normalized.src
+                )
+              )}"
+            />
+
+            Seu navegador não conseguiu carregar este vídeo.
+          </video>
+
+          <button
+            id="centerPlayButton"
+            class="player-center-play"
+            type="button"
+            aria-label="Reproduzir"
+          >
+            ▶
+          </button>
+
+          <div
+            id="videoLoading"
+            class="video-loading"
+          >
+            Carregando vídeo...
+          </div>
+
+          <div
+            id="videoError"
+            class="video-error hidden"
+          >
+            Não foi possível reproduzir este vídeo.
+            Verifique a URL e se o arquivo é MP4,
+            WEBM ou OGG.
+          </div>
+
+          <div
+            id="playerControls"
+            class="player-controls"
+          >
+            <div
+              id="playerProgress"
+              class="player-progress"
+              role="slider"
+              aria-label="Progresso do vídeo"
+              tabindex="0"
+            >
+              <div
+                id="playerBuffer"
+                class="player-progress-buffer"
+              ></div>
+
+              <div
+                id="playerProgressValue"
+                class="player-progress-value"
+              ></div>
+            </div>
+
+            <div class="player-control-row">
+              <button
+                id="playPauseButton"
+                class="player-control-button"
+                type="button"
+                aria-label="Reproduzir"
+              >
+                ▶
+              </button>
+
+              <button
+                id="muteButton"
+                class="player-control-button"
+                type="button"
+                aria-label="Ativar ou desativar som"
+              >
+                🔊
+              </button>
+
+              <div class="player-volume">
+                <input
+                  id="volumeControl"
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.05"
+                  value="1"
+                  aria-label="Volume"
+                />
+              </div>
+
+              <span
+                id="playerTime"
+                class="player-time"
+              >
+                00:00 / 00:00
+              </span>
+
+              <div class="player-spacer"></div>
+
+              <select
+                id="speedControl"
+                class="player-speed"
+                aria-label="Velocidade"
+              >
+                <option value="0.5">0.5x</option>
+                <option value="0.75">0.75x</option>
+                <option value="1" selected>1x</option>
+                <option value="1.25">1.25x</option>
+                <option value="1.5">1.5x</option>
+                <option value="2">2x</option>
+              </select>
+
+              <button
+                id="fullscreenButton"
+                class="player-control-button"
+                type="button"
+                aria-label="Tela cheia"
+              >
+                ⛶
+              </button>
+            </div>
+          </div>
+        `
+      };
+    }
+
+    function setupCustomVideoPlayer({
+      title,
+      episode
+    }) {
+      const stage =
+        document.getElementById("playerStage");
+
+      const video =
+        document.getElementById("lumimVideo");
+
+      const playPauseButton =
+        document.getElementById(
+          "playPauseButton"
+        );
+
+      const centerPlayButton =
+        document.getElementById(
+          "centerPlayButton"
+        );
+
+      const muteButton =
+        document.getElementById(
+          "muteButton"
+        );
+
+      const volumeControl =
+        document.getElementById(
+          "volumeControl"
+        );
+
+      const speedControl =
+        document.getElementById(
+          "speedControl"
+        );
+
+      const fullscreenButton =
+        document.getElementById(
+          "fullscreenButton"
+        );
+
+      const progress =
+        document.getElementById(
+          "playerProgress"
+        );
+
+      const progressValue =
+        document.getElementById(
+          "playerProgressValue"
+        );
+
+      const buffer =
+        document.getElementById(
+          "playerBuffer"
+        );
+
+      const time =
+        document.getElementById(
+          "playerTime"
+        );
+
+      const loading =
+        document.getElementById(
+          "videoLoading"
+        );
+
+      const errorBox =
+        document.getElementById(
+          "videoError"
+        );
+
+      const status =
+        document.getElementById(
+          "playerStatus"
+        );
+
+      let controlsTimer = null;
+
+      const titleId =
+        title?.id || null;
+
+      const episodeId =
+        episode?.id || null;
+
+      let savedProgress =
+        getProgress(
+          titleId,
+          episodeId
+        );
+
+      video.volume = 1;
+      video.controls = false;
+
+      function updatePlayButton() {
+        const paused =
+          video.paused ||
+          video.ended;
+
+        playPauseButton.textContent =
+          paused ? "▶" : "❚❚";
+
+        playPauseButton.setAttribute(
+          "aria-label",
+          paused
+            ? "Reproduzir"
+            : "Pausar"
+        );
+
+        centerPlayButton.textContent =
+          paused ? "▶" : "❚❚";
+
+        centerPlayButton.classList.toggle(
+          "hidden-control",
+          !paused
+        );
+      }
+
+      function togglePlay() {
+        if (
+          video.paused ||
+          video.ended
+        ) {
+          video.play().catch(error => {
+            console.warn(
+              "A reprodução automática foi bloqueada:",
+              error
+            );
+          });
+        } else {
+          video.pause();
+        }
+      }
+
+      function updateProgress() {
+        const duration =
+          Number(video.duration || 0);
+
+        const current =
+          Number(video.currentTime || 0);
+
+        const percent =
+          duration > 0
+            ? (current / duration) * 100
+            : 0;
+
+        progressValue.style.width =
+          `${percent}%`;
+
+        time.textContent =
+          `${formatTime(current)} / ${
+            formatTime(duration)
+          }`;
+      }
+
+      function updateBuffer() {
+        if (
+          !video.buffered ||
+          !video.buffered.length ||
+          !video.duration
+        ) {
+          return;
+        }
+
+        const end =
+          video.buffered.end(
+            video.buffered.length - 1
+          );
+
+        buffer.style.width =
+          `${(end / video.duration) * 100}%`;
+      }
+
+      function seekFromPointer(event) {
+        const rect =
+          progress.getBoundingClientRect();
+
+        const position =
+          Math.max(
+            0,
+            Math.min(
+              1,
+              (event.clientX - rect.left) /
+                rect.width
+            )
+          );
+
+        if (video.duration) {
+          video.currentTime =
+            position * video.duration;
+        }
+      }
+
+      function showControls() {
+        stage.classList.remove(
+          "controls-hidden"
+        );
+
+        clearTimeout(controlsTimer);
+
+        if (!video.paused) {
+          controlsTimer = setTimeout(() => {
+            stage.classList.add(
+              "controls-hidden"
+            );
+          }, 2800);
+        }
+      }
+
+      function toggleFullscreen() {
+        if (!document.fullscreenElement) {
+          stage.requestFullscreen?.();
+        } else {
+          document.exitFullscreen?.();
+        }
+      }
+
+      playPauseButton.onclick =
+        togglePlay;
+
+      centerPlayButton.onclick =
+        togglePlay;
+
+      video.addEventListener(
+        "click",
+        togglePlay
+      );
+
+      video.addEventListener(
+        "play",
+        () => {
+          updatePlayButton();
+          showControls();
+        }
+      );
+
+      video.addEventListener(
+        "pause",
+        () => {
+          updatePlayButton();
+          showControls();
+        }
+      );
+
+      video.addEventListener(
+        "loadedmetadata",
+        () => {
+          loading.classList.add("hidden");
+
+          const savedPosition =
+            Number(
+              savedProgress?.position || 0
+            );
+
+          if (
+            savedPosition > 0 &&
+            savedPosition < video.duration
+          ) {
+            video.currentTime =
+              savedPosition;
+          }
+
+          updateProgress();
+
+          video.play().catch(() => {
+            updatePlayButton();
+          });
+        }
+      );
+
+      video.addEventListener(
+        "timeupdate",
+        () => {
+          updateProgress();
+          saveCurrentProgress();
+        }
+      );
+
+      video.addEventListener(
+        "progress",
+        updateBuffer
+      );
+
+      video.addEventListener(
+        "waiting",
+        () => {
+          loading.textContent =
+            "Carregando...";
+          loading.classList.remove(
+            "hidden"
+          );
+        }
+      );
+
+      video.addEventListener(
+        "canplay",
+        () => {
+          loading.classList.add(
+            "hidden"
+          );
+        }
+      );
+
+      video.addEventListener(
+        "ended",
+        async () => {
+          updatePlayButton();
+
+          status.textContent =
+            "Concluído";
+
+          await savePlaybackProgress({
+            titleId,
+            episodeId,
+            position:
+              video.duration || 0,
+            duration:
+              video.duration || null,
+            completed: true
+          });
+        }
+      );
+
+      video.addEventListener(
+        "error",
+        () => {
+          loading.classList.add(
+            "hidden"
+          );
+
+          errorBox.classList.remove(
+            "hidden"
+          );
+        }
+      );
+
+      muteButton.onclick = () => {
+        video.muted =
+          !video.muted;
+
+        muteButton.textContent =
+          video.muted
+            ? "🔇"
+            : "🔊";
+      };
+
+      volumeControl.oninput = () => {
+        video.volume =
+          Number(volumeControl.value);
+
+        video.muted =
+          video.volume === 0;
+
+        muteButton.textContent =
+          video.muted
+            ? "🔇"
+            : "🔊";
+      };
+
+      speedControl.onchange = () => {
+        video.playbackRate =
+          Number(speedControl.value);
+      };
+
+      fullscreenButton.onclick =
+        toggleFullscreen;
+
+      progress.addEventListener(
+        "click",
+        seekFromPointer
+      );
+
+      progress.addEventListener(
+        "keydown",
+        event => {
+          if (
+            event.key !== "ArrowLeft" &&
+            event.key !== "ArrowRight"
+          ) {
+            return;
+          }
+
+          event.preventDefault();
+
+          const step =
+            event.key === "ArrowLeft"
+              ? -10
+              : 10;
+
+          video.currentTime =
+            Math.max(
+              0,
+              Math.min(
+                video.duration || 0,
+                video.currentTime + step
+              )
+            );
+        }
+      );
+
+      stage.addEventListener(
+        "mousemove",
+        showControls
+      );
+
+      stage.addEventListener(
+        "touchstart",
+        showControls,
+        {
+          passive: true
+        }
+      );
+
+      document.addEventListener(
+        "keydown",
+        event => {
+          if (
+            !document.getElementById(
+              "lumimVideo"
+            )
+          ) {
+            return;
+          }
+
+          if (
+            event.target.tagName ===
+              "INPUT" ||
+            event.target.tagName ===
+              "SELECT"
+          ) {
+            return;
+          }
+
+          if (event.code === "Space") {
+            event.preventDefault();
+            togglePlay();
+          }
+
+          if (event.key === "ArrowLeft") {
+            video.currentTime =
+              Math.max(
+                0,
+                video.currentTime - 10
+              );
+          }
+
+          if (event.key === "ArrowRight") {
+            video.currentTime =
+              Math.min(
+                video.duration || 0,
+                video.currentTime + 10
+              );
+          }
+
+          if (event.key.toLowerCase() === "m") {
+            video.muted =
+              !video.muted;
+
+            muteButton.textContent =
+              video.muted
+                ? "🔇"
+                : "🔊";
+          }
+
+          if (event.key.toLowerCase() === "f") {
+            toggleFullscreen();
+          }
+        }
+      );
+
+      updatePlayButton();
+      showControls();
+
+      function saveCurrentProgress() {
+        if (
+          !video.currentTime ||
+          !Number.isFinite(
+            video.currentTime
+          )
+        ) {
+          return;
+        }
+
+        savePlaybackProgress({
+          titleId,
+          episodeId,
+          position:
+            video.currentTime,
+          duration:
+            video.duration || null,
+          completed: false
+        });
+      }
+    }
+
+    async function savePlaybackProgress({
+      titleId,
+      episodeId,
+      position,
+      duration,
+      completed = false
+    }) {
+      if (!state.user || !titleId) {
+        return;
+      }
+
+      const row = {
+        user_id: state.user.id,
+        title_id: titleId,
+        episode_id: episodeId || null,
+        position: Number(position || 0),
+        duration: Number.isFinite(duration)
+          ? duration
+          : null,
+        completed,
+        updated_at:
+          new Date().toISOString()
+      };
+
+      const {
+        data,
+        error
+      } = await db
+        .from("watch_progress")
+        .upsert(row, {
+          onConflict:
+            "user_id,title_id,episode_id"
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error(
+          "Erro ao salvar progresso:",
+          error
+        );
+
+        return;
+      }
+
+      if (episodeId) {
+        state.progress[
+          `${titleId}:${episodeId}`
+        ] = data;
+      } else {
+        state.progress[titleId] = data;
+      }
+    }
+
+    function getProgress(
+      titleId,
+      episodeId
+    ) {
+      if (!titleId) {
+        return null;
+      }
+
+      if (episodeId) {
+        return state.progress[
+          `${titleId}:${episodeId}`
+        ] || null;
+      }
+
+      return state.progress[titleId] || null;
+    }
+
+    function normalizeVideoUrl(rawUrl) {
+      const value =
+        String(rawUrl || "").trim();
+
+      if (!value) {
+        return {
+          type: "html-video",
+          src: ""
+        };
+      }
+
+      const youtubeId =
+        getYoutubeId(value);
+
+      if (youtubeId) {
+        return {
+          type: "youtube",
+          src:
+            `https://www.youtube.com/embed/${youtubeId}` +
+            `?autoplay=1&rel=0&modestbranding=1`
+        };
+      }
+
+      const vimeoId =
+        getVimeoId(value);
+
+      if (vimeoId) {
+        return {
+          type: "vimeo",
+          src:
+            `https://player.vimeo.com/video/${vimeoId}` +
+            `?autoplay=1`
+        };
+      }
+
+      return {
+        type: "html-video",
+        src: value
+      };
+    }
+
+    function getYoutubeId(value) {
+      try {
+        const url =
+          new URL(value);
+
+        if (
+          url.hostname.includes(
+            "youtube.com"
+          ) &&
+          url.pathname.startsWith(
+            "/embed/"
+          )
+        ) {
+          return url.pathname
+            .split("/embed/")[1]
+            .split("/")[0];
+        }
+
+        if (
+          url.hostname.includes(
+            "youtube.com"
+          ) ||
+          url.hostname.includes(
+            "youtube-nocookie.com"
+          )
+        ) {
+          return url.searchParams.get("v");
+        }
+
+        if (
+          url.hostname === "youtu.be"
+        ) {
+          return url.pathname
+            .replace("/", "")
+            .split("?")[0];
+        }
+      } catch {
+        return null;
+      }
+
+      return null;
+    }
+
+    function getVimeoId(value) {
+      try {
+        const url =
+          new URL(value);
+
+        if (
+          url.hostname.includes(
+            "vimeo.com"
+          )
+        ) {
+          const parts =
+            url.pathname
+              .split("/")
+              .filter(Boolean);
+
+          return (
+            parts.find(
+              part => /^d+$/.test(part)
+            ) || null
+          );
+        }
+      } catch {
+        return null;
+      }
+
+      return null;
+    }
+
+    function getVideoMimeType(url) {
+      const cleanUrl =
+        String(url)
+          .split("?")[0]
+          .split("#")[0]
+          .toLowerCase();
+
+      if (cleanUrl.endsWith(".webm")) {
+        return "video/webm";
+      }
+
+      if (cleanUrl.endsWith(".ogg")) {
+        return "video/ogg";
+      }
+
+      return "video/mp4";
+    }
+
+    function formatTime(seconds) {
+      if (
+        !Number.isFinite(seconds) ||
+        seconds < 0
+      ) {
+        return "00:00";
+      }
+
+      const hours =
+        Math.floor(seconds / 3600);
+
+      const minutes =
+        Math.floor(
+          (seconds % 3600) / 60
+        );
+
+      const secs =
+        Math.floor(seconds % 60);
+
+      const hh =
+        hours > 0
+          ? `${String(hours).padStart(2, "0")}:`
+          : "";
+
+      return (
+        hh +
+        `${String(minutes).padStart(2, "0")}:` +
+        `${String(secs).padStart(2, "0")}`
+      );
+    }
+
+    function handleGlobalKeyboard(event) {
+      if (event.key === "Escape") {
+        closeModal();
+      }
+    }
+
+    /* =========================================================
+       PERFIS E BUSCA
+    ========================================================= */
+
     function openProfiles() {
-      const profiles = state.profiles.length
-        ? state.profiles
-        : [
-            {
-              id: "default",
-              name:
-                state.user?.email?.split("@")[0] ||
-                "Perfil",
-              avatar_url:
-                "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80"
-            }
-          ];
+      const profiles =
+        state.profiles.length
+          ? state.profiles
+          : [
+              {
+                id: "default",
+                name:
+                  state.user?.email
+                    ?.split("@")[0] ||
+                  "Perfil",
+                avatar_url:
+                  "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80"
+              }
+            ];
 
       const modal = createModal(`
         <div class="profile-panel">
-          <h2>Quem está assistindo?</h2>
+          <h2>
+            Quem está assistindo?
+          </h2>
 
           <div class="profiles-grid">
             ${profiles
@@ -2182,7 +3629,9 @@
                     />
 
                     <span>
-                      ${escapeHtml(profile.name)}
+                      ${escapeHtml(
+                        profile.name
+                      )}
                     </span>
                   </button>
                 `;
@@ -2193,7 +3642,9 @@
       `);
 
       modal
-        .querySelectorAll(".profile-option")
+        .querySelectorAll(
+          ".profile-option"
+        )
         .forEach(button => {
           button.onclick = () => {
             localStorage.setItem(
@@ -2215,16 +3666,22 @@
     }
 
     function showMyList() {
-      const list = state.titles.filter(title => {
-        return title.is_favorite === true;
-      });
+      const list =
+        state.titles.filter(title => {
+          return title.is_favorite === true;
+        });
 
-      openCatalog("Minha lista", list);
+      openCatalog(
+        "Minha lista",
+        list
+      );
     }
 
     function toggleSearch() {
       const wrap =
-        document.getElementById("searchWrap");
+        document.getElementById(
+          "searchWrap"
+        );
 
       wrap.classList.toggle("open");
 
@@ -2236,30 +3693,36 @@
     }
 
     function searchTitles(query) {
-      const value = query.trim().toLowerCase();
+      const value =
+        query.trim().toLowerCase();
 
       if (!value) {
         renderHome();
         return;
       }
 
-      const results = state.titles.filter(title => {
-        return (
-          String(
-            title.name ||
-            title.title ||
-            ""
-          )
-            .toLowerCase()
-            .includes(value) ||
-          String(title.description || "")
-            .toLowerCase()
-            .includes(value)
-        );
-      });
+      const results =
+        state.titles.filter(title => {
+          return (
+            String(
+              title.name ||
+              title.title ||
+              ""
+            )
+              .toLowerCase()
+              .includes(value) ||
+            String(
+              title.description || ""
+            )
+              .toLowerCase()
+              .includes(value)
+          );
+        });
 
       const content =
-        document.getElementById("content");
+        document.getElementById(
+          "content"
+        );
 
       content.innerHTML = "";
 
@@ -2273,11 +3736,14 @@
 
     function goHome() {
       document
-        .querySelectorAll(".nav-links button")
+        .querySelectorAll(
+          ".nav-links button"
+        )
         .forEach(button => {
           button.classList.toggle(
             "active",
-            button.dataset.route === "inicio"
+            button.dataset.route ===
+              "inicio"
           );
         });
 
@@ -2289,9 +3755,15 @@
       renderHome();
     }
 
+    /* =========================================================
+       MODAIS E UTILITÁRIOS
+    ========================================================= */
+
     function createModal(content) {
       const root =
-        document.getElementById("modalRoot");
+        document.getElementById(
+          "modalRoot"
+        );
 
       root.innerHTML = `
         <div
@@ -2302,22 +3774,18 @@
             class="modal"
             onclick="event.stopPropagation()"
           >
-            <button
-              class="modal-close"
-              onclick="closeModal()"
-              aria-label="Fechar"
-            >
-              ×
-            </button>
-
             ${content}
           </section>
         </div>
       `;
 
-      document.body.classList.add("modal-open");
+      document.body.classList.add(
+        "modal-open"
+      );
 
-      return root.querySelector(".modal");
+      return root.querySelector(
+        ".modal"
+      );
     }
 
     function backdropClose(event) {
@@ -2331,13 +3799,29 @@
     }
 
     function closeModal() {
-      document.getElementById("modalRoot").innerHTML = "";
-      document.body.classList.remove("modal-open");
+      const video =
+        document.getElementById(
+          "lumimVideo"
+        );
+
+      if (video) {
+        video.pause();
+      }
+
+      document
+        .getElementById("modalRoot")
+        .replaceChildren();
+
+      document.body.classList.remove(
+        "modal-open"
+      );
     }
 
     function showToast(message) {
       const root =
-        document.getElementById("toastRoot");
+        document.getElementById(
+          "toastRoot"
+        );
 
       root.innerHTML = `
         <div class="toast">
@@ -2350,36 +3834,11 @@
       }, 2800);
     }
 
-    async function saveProgress(
-      titleId,
-      position,
-      duration = null,
-      episodeId = null
-    ) {
-      if (!state.user) return;
-
-      const payload = {
-        user_id: state.user.id,
-        title_id: titleId,
-        episode_id: episodeId,
-        position,
-        duration,
-        updated_at: new Date().toISOString()
-      };
-
-      const { error } = await db
-        .from("watch_progress")
-        .upsert(payload, {
-          onConflict:
-            "user_id,title_id,episode_id"
-        });
-
-      if (error) {
-        console.error(
-          "Erro ao salvar progresso:",
-          error
-        );
-      }
+    function normalizeText(value) {
+      return String(value || "")
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[̀-ͯ]/g, "");
     }
 
     function hashCode(value) {
@@ -2395,10 +3854,22 @@
 
     function safeJson(value) {
       return JSON.stringify(value)
-        .replaceAll("&", "\\u0026")
-        .replaceAll("<", "\\u003c")
-        .replaceAll(">", "\\u003e")
-        .replaceAll("'", "\\u0027");
+        .replaceAll(
+          "&",
+          "\\u0026"
+        )
+        .replaceAll(
+          "<",
+          "\\u003c"
+        )
+        .replaceAll(
+          ">",
+          "\\u003e"
+        )
+        .replaceAll(
+          "'",
+          "\\u0027"
+        );
     }
 
     function escapeHtml(value) {
