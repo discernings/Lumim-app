@@ -1,0 +1,455 @@
+# Lumim — gera o APK (celular + Android TV) e publica numa Release do GitHub.
+# Coloque este arquivo em:  .github/workflows/build-apk.yml
+# Roda sozinho a cada push em main/master, ou manualmente em Actions > Build APK > Run workflow.
+
+name: Build APK
+
+on:
+  push:
+    branches: [main, master]
+    paths-ignore:
+      - "**.md"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-apk
+  cancel-in-progress: true
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      BUILD: ${{ github.run_number }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Preparar o site (www)
+        run: |
+          mkdir -p build/www
+          cp index.html build/www/
+          for f in *.jpg *.jpeg *.png *.webp *.svg *.ico *.gif; do
+            if [ -f "$f" ]; then cp "$f" build/www/; fi
+          done
+          sed -i "s/__APP_VERSION__/${BUILD}/; s|__GH_REPO__|${GITHUB_REPOSITORY}|" build/www/index.html
+          grep -o 'name="app-version" content="[^"]*"' build/www/index.html
+          grep -o 'name="github-repo" content="[^"]*"' build/www/index.html
+
+      - name: Criar projeto Capacitor + Android
+        working-directory: build
+        run: |
+          npm init -y
+          npm i --no-audit --no-fund @capacitor/core@6 @capacitor/cli@6 @capacitor/android@6 @capacitor/app@6 @capacitor/browser@6
+          cat > capacitor.config.json <<'EOF'
+          {
+            "appId": "com.lumim.watch",
+            "appName": "Lumim",
+            "webDir": "www",
+            "backgroundColor": "#050505",
+            "android": { "allowMixedContent": true },
+            "server": { "androidScheme": "https" }
+          }
+          EOF
+          npx cap add android
+          pip install --quiet pillow
+
+      - name: Aplicar TV, instalador de atualização e assinatura
+        working-directory: build
+        run: |
+          echo "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" | base64 -d > lumim.keystore
+          JAVA_DIR=android/app/src/main/java/com/lumim/watch
+          mkdir -p "$JAVA_DIR"
+          cat > "$JAVA_DIR/ApkInstallerPlugin.java" <<'EOF'
+          package com.lumim.watch;
+
+          import android.app.DownloadManager;
+          import android.content.Context;
+          import android.content.Intent;
+          import android.database.Cursor;
+          import android.net.Uri;
+          import android.os.Build;
+          import android.os.Environment;
+          import android.os.Handler;
+          import android.os.Looper;
+          import android.provider.Settings;
+
+          import androidx.core.content.FileProvider;
+
+          import com.getcapacitor.JSObject;
+          import com.getcapacitor.Plugin;
+          import com.getcapacitor.PluginCall;
+          import com.getcapacitor.PluginMethod;
+          import com.getcapacitor.annotation.CapacitorPlugin;
+
+          import java.io.File;
+
+          @CapacitorPlugin(name = "ApkInstaller")
+          public class ApkInstallerPlugin extends Plugin {
+
+              private final Handler handler = new Handler(Looper.getMainLooper());
+              private Runnable poller;
+              private long downloadId = -1;
+
+              @PluginMethod
+              public void install(PluginCall call) {
+                  String url = call.getString("url");
+                  String fileName = call.getString("fileName", "Lumim-update.apk");
+
+                  if (url == null || url.isEmpty()) {
+                      call.reject("URL ausente");
+                      return;
+                  }
+
+                  Context context = getContext();
+
+                  if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
+                          && !context.getPackageManager().canRequestPackageInstalls()) {
+                      try {
+                          Intent intent = new Intent(
+                                  Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                                  Uri.parse("package:" + context.getPackageName()));
+                          intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                          context.startActivity(intent);
+                      } catch (Exception ignored) {
+                      }
+                      call.reject("Permita instalar apps desta origem", "NEEDS_PERMISSION");
+                      return;
+                  }
+
+                  try {
+                      stopPolling();
+
+                      File dir = context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS);
+                      if (dir != null) {
+                          File old = new File(dir, fileName);
+                          if (old.exists()) {
+                              old.delete();
+                          }
+                      }
+
+                      DownloadManager.Request request = new DownloadManager.Request(Uri.parse(url));
+                      request.setTitle("Atualização do Lumim");
+                      request.setMimeType("application/vnd.android.package-archive");
+                      request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE);
+                      request.setDestinationInExternalFilesDir(
+                              context, Environment.DIRECTORY_DOWNLOADS, fileName);
+
+                      DownloadManager manager =
+                              (DownloadManager) context.getSystemService(Context.DOWNLOAD_SERVICE);
+                      downloadId = manager.enqueue(request);
+
+                      startPolling(fileName);
+
+                      JSObject result = new JSObject();
+                      result.put("started", true);
+                      call.resolve(result);
+                  } catch (Exception e) {
+                      call.reject("Falha ao iniciar o download: " + e.getMessage());
+                  }
+              }
+
+              private void startPolling(final String fileName) {
+                  poller = new Runnable() {
+                      @Override
+                      public void run() {
+                          DownloadManager manager =
+                                  (DownloadManager) getContext().getSystemService(Context.DOWNLOAD_SERVICE);
+                          Cursor cursor = null;
+
+                          try {
+                              cursor = manager.query(new DownloadManager.Query().setFilterById(downloadId));
+
+                              if (cursor != null && cursor.moveToFirst()) {
+                                  int status = cursor.getInt(
+                                          cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS));
+                                  long done = cursor.getLong(cursor.getColumnIndexOrThrow(
+                                          DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR));
+                                  long total = cursor.getLong(cursor.getColumnIndexOrThrow(
+                                          DownloadManager.COLUMN_TOTAL_SIZE_BYTES));
+
+                                  if (status == DownloadManager.STATUS_SUCCESSFUL) {
+                                      stopPolling();
+                                      notifyListeners("downloadDone", new JSObject());
+                                      installApk(fileName);
+                                      return;
+                                  }
+
+                                  if (status == DownloadManager.STATUS_FAILED) {
+                                      stopPolling();
+                                      notifyListeners("downloadError", new JSObject());
+                                      return;
+                                  }
+
+                                  JSObject progress = new JSObject();
+                                  progress.put("percent", total > 0 ? (int) (done * 100 / total) : 0);
+                                  notifyListeners("downloadProgress", progress);
+                              } else {
+                                  stopPolling();
+                                  notifyListeners("downloadError", new JSObject());
+                                  return;
+                              }
+                          } catch (Exception e) {
+                              stopPolling();
+                              notifyListeners("downloadError", new JSObject());
+                              return;
+                          } finally {
+                              if (cursor != null) {
+                                  cursor.close();
+                              }
+                          }
+
+                          handler.postDelayed(this, 500);
+                      }
+                  };
+
+                  handler.post(poller);
+              }
+
+              private void stopPolling() {
+                  if (poller != null) {
+                      handler.removeCallbacks(poller);
+                      poller = null;
+                  }
+              }
+
+              private void installApk(String fileName) {
+                  try {
+                      Context context = getContext();
+                      File file = new File(
+                              context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), fileName);
+
+                      Uri uri = FileProvider.getUriForFile(
+                              context, context.getPackageName() + ".fileprovider", file);
+
+                      Intent intent = new Intent(Intent.ACTION_VIEW);
+                      intent.setDataAndType(uri, "application/vnd.android.package-archive");
+                      intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
+                      context.startActivity(intent);
+                  } catch (Exception e) {
+                      notifyListeners("downloadError", new JSObject());
+                  }
+              }
+
+              @Override
+              protected void handleOnDestroy() {
+                  stopPolling();
+              }
+          }
+          EOF
+          cat > "$JAVA_DIR/MainActivity.java" <<'EOF'
+          package com.lumim.watch;
+
+          import android.os.Bundle;
+
+          import com.getcapacitor.BridgeActivity;
+
+          public class MainActivity extends BridgeActivity {
+              @Override
+              public void onCreate(Bundle savedInstanceState) {
+                  registerPlugin(ApkInstallerPlugin.class);
+                  super.onCreate(savedInstanceState);
+              }
+          }
+          EOF
+          cat > patch_android.py <<'PY'
+          import os, re, pathlib
+
+          build = os.environ["BUILD"]
+          main = pathlib.Path("android/app/src/main")
+
+          # ---------- AndroidManifest ----------
+          manifest = main / "AndroidManifest.xml"
+          text = manifest.read_text(encoding="utf-8")
+
+          text = text.replace(
+              "<application",
+              '<application android:usesCleartextTraffic="true" android:banner="@drawable/tv_banner"',
+              1,
+          )
+
+          if "REQUEST_INSTALL_PACKAGES" not in text:
+              text = text.replace(
+                  "<application",
+                  '<uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />\n'
+                  '    <uses-feature android:name="android.software.leanback" android:required="false" />\n'
+                  '    <uses-feature android:name="android.hardware.touchscreen" android:required="false" />\n\n'
+                  "    <application",
+                  1,
+              )
+
+          text = re.sub(
+              r'(<category android:name="android.intent.category.LAUNCHER"\s*/>)',
+              r'\1\n                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />',
+              text,
+              count=1,
+          )
+
+          if "FileProvider" not in text:
+              text = text.replace(
+                  "</application>",
+                  '    <provider android:name="androidx.core.content.FileProvider" '
+                  'android:authorities="${applicationId}.fileprovider" '
+                  'android:exported="false" android:grantUriPermissions="true">\n'
+                  '            <meta-data android:name="android.support.FILE_PROVIDER_PATHS" '
+                  'android:resource="@xml/file_paths" />\n'
+                  "        </provider>\n    </application>",
+                  1,
+              )
+
+          assert "LEANBACK_LAUNCHER" in text, "Falha ao adicionar LEANBACK_LAUNCHER"
+          manifest.write_text(text, encoding="utf-8")
+
+          # ---------- FileProvider paths ----------
+          xml_dir = main / "res" / "xml"
+          xml_dir.mkdir(parents=True, exist_ok=True)
+          (xml_dir / "file_paths.xml").write_text(
+              '<?xml version="1.0" encoding="utf-8"?>\n'
+              '<paths xmlns:android="http://schemas.android.com/apk/res/android">\n'
+              '    <external-files-path name="downloads" path="." />\n'
+              '    <external-path name="external" path="." />\n'
+              '    <cache-path name="cache" path="." />\n'
+              "</paths>\n",
+              encoding="utf-8",
+          )
+
+          # ---------- Gradle: versão + assinatura fixa ----------
+          gradle = pathlib.Path("android/app/build.gradle")
+          g = gradle.read_text(encoding="utf-8")
+
+          g = re.sub(r"versionCode\s+\d+", f"versionCode {build}", g, count=1)
+          g = re.sub(r'versionName\s+"[^"]*"', f'versionName "1.0.{build}"', g, count=1)
+
+          signing = (
+              "    signingConfigs {\n"
+              "        release {\n"
+              '            storeFile file(System.getenv("KEYSTORE_PATH"))\n'
+              '            storePassword "lumim-release-2026"\n'
+              '            keyAlias "lumim"\n'
+              '            keyPassword "lumim-release-2026"\n'
+              "        }\n"
+              "    }\n"
+          )
+
+          g = g.replace("buildTypes {", signing + "    buildTypes {", 1)
+          g = re.sub(
+              r"(buildTypes\s*\{\s*release\s*\{)",
+              r"\1\n            signingConfig signingConfigs.release",
+              g,
+              count=1,
+          )
+
+          assert "signingConfig signingConfigs.release" in g, "Falha ao configurar a assinatura"
+          assert f"versionCode {build}" in g, "Falha ao definir versionCode"
+          gradle.write_text(g, encoding="utf-8")
+
+          # ---------- Ícone, banner de TV ----------
+          from PIL import Image, ImageDraw, ImageOps
+
+          logo_path = pathlib.Path("www/1000002482.jpg")
+
+
+          def base_logo(size):
+              if logo_path.exists():
+                  return ImageOps.fit(Image.open(logo_path).convert("RGB"), (size, size))
+
+              image = Image.new("RGB", (size, size), (0, 0, 0))
+              draw = ImageDraw.Draw(image)
+              pad = size * 0.28
+              draw.ellipse([pad, pad, size - pad, size - pad], outline=(255, 255, 255), width=max(2, size // 24))
+              return image
+
+
+          res = main / "res"
+          densities = {"mdpi": 48, "hdpi": 72, "xhdpi": 96, "xxhdpi": 144, "xxxhdpi": 192}
+
+          for name, px in densities.items():
+              folder = res / f"mipmap-{name}"
+              folder.mkdir(parents=True, exist_ok=True)
+
+              square = base_logo(px)
+              square.save(folder / "ic_launcher.png")
+
+              mask = Image.new("L", (px, px), 0)
+              ImageDraw.Draw(mask).ellipse([0, 0, px - 1, px - 1], fill=255)
+              round_icon = Image.new("RGBA", (px, px), (0, 0, 0, 0))
+              round_icon.paste(square.convert("RGBA"), (0, 0), mask)
+              round_icon.save(folder / "ic_launcher_round.png")
+
+              fg = int(px * 108 / 48)
+              canvas = Image.new("RGBA", (fg, fg), (0, 0, 0, 0))
+              inner = int(fg * 0.6)
+              canvas.paste(base_logo(inner).convert("RGBA"), ((fg - inner) // 2, (fg - inner) // 2))
+              canvas.save(folder / "ic_launcher_foreground.png")
+
+          background = res / "values" / "ic_launcher_background.xml"
+
+          if background.exists():
+              background.write_text(
+                  '<?xml version="1.0" encoding="utf-8"?>\n<resources>\n'
+                  '    <color name="ic_launcher_background">#000000</color>\n</resources>\n',
+                  encoding="utf-8",
+              )
+
+          drawable = res / "drawable"
+          drawable.mkdir(parents=True, exist_ok=True)
+
+          banner = Image.new("RGB", (640, 360), (5, 5, 5))
+          banner.paste(base_logo(220), (210, 70))
+          banner.save(drawable / "tv_banner.png")
+
+          # Tela de abertura (substitui o splash padrão do Capacitor)
+          for splash in res.glob("drawable*/splash.png"):
+              width, height = Image.open(splash).size
+              image = Image.new("RGB", (width, height), (0, 0, 0))
+              side = int(min(width, height) * 0.32)
+              image.paste(base_logo(side), ((width - side) // 2, (height - side) // 2))
+              image.save(splash)
+
+          print("Patch Android aplicado, versão 1.0." + build)
+          PY
+          python patch_android.py
+
+      - name: Compilar APK
+        working-directory: build/android
+        env:
+          KEYSTORE_PATH: ${{ github.workspace }}/build/lumim.keystore
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon --stacktrace
+
+      - name: Separar APK
+        run: cp build/android/app/build/outputs/apk/release/app-release.apk Lumim.apk
+
+      - name: Publicar Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          name: Lumim v1.0.${{ github.run_number }}
+          body: ${{ github.event.head_commit.message || 'Build manual' }}
+          files: Lumim.apk
+          make_latest: true
+
+      - name: Limpar releases antigas (mantém as 5 últimas)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release list --limit 100 --json tagName --jq '[.[] | select(.tagName | startswith("build-"))] | .[5:][] | .tagName' | while read -r tag; do
+            gh release delete "$tag" --cleanup-tag -y || true
+          done
