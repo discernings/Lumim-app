@@ -2033,6 +2033,97 @@
     body.mode-tv .chooser-background::after { filter: none; opacity: .12; }
     body.mode-tv .leaf-glow { filter: none; }
 
+    /* ===== v3: TV menor, hero com imagem real, tela cheia, painel ===== */
+
+    body.mode-tv .media-row { grid-auto-columns: clamp(135px, 10.5vw, 180px); gap: 16px; }
+    body.mode-tv .sk-row { grid-auto-columns: clamp(135px, 10.5vw, 180px); gap: 16px; }
+    body.mode-tv .catalog-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 16px; }
+    body.mode-tv .media-card { border-radius: 14px; }
+    body.mode-tv .card-title { font-size: 13px; }
+    body.mode-tv .card-meta { font-size: 11px; }
+    body.mode-tv .section-heading h2 { font-size: 25px; }
+    body.mode-tv .content-section { margin-bottom: 40px; }
+    body.mode-tv .hero { min-height: min(700px, 80vh); }
+    body.mode-tv .hero h1 { font-size: clamp(44px, 5vw, 76px); }
+
+    .hero { isolation: isolate; --hero-image: none; }
+
+    .hero-img {
+      position: absolute;
+      z-index: -3;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center 25%;
+      transition: opacity .5s ease;
+      animation: kenBurns 14s ease-out both;
+    }
+
+    .hero-img.is-poster { object-position: center 15%; }
+    .hero.swapping .hero-img { opacity: 0; }
+    body.mode-tv .hero-img { animation: none; }
+
+    @keyframes kenBurns { from { transform: scale(1); } to { transform: scale(1.08); } }
+
+    .hero-content .eyebrow { animation: heroText .8s .1s var(--ease) both; }
+    .hero-description { animation: heroText .8s .35s var(--ease) both; }
+    .hero-actions { animation: heroText .8s .5s var(--ease) both; }
+
+    .hero-dots i.active { position: relative; overflow: hidden; width: 38px; background: rgba(255,255,255,.3); }
+
+    .hero-dots i.active::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: #fff;
+      transform-origin: left;
+      animation: dotFill 9s linear forwards;
+    }
+
+    @keyframes dotFill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
+    .topbar { transition: background .3s, transform .35s var(--ease); }
+    .topbar.tb-hide { transform: translateY(-100%); }
+    .media-card:active { transform: scale(.97); }
+
+    body.playing .modal-backdrop { padding: 0; background: #000; }
+
+    body.playing .modal.is-player {
+      width: 100vw;
+      height: 100vh;
+      height: 100dvh;
+      max-height: none;
+      border: 0;
+      border-radius: 0;
+    }
+
+    body.playing .modal.is-player .player-stage { height: 100vh; height: 100dvh; aspect-ratio: auto; min-height: 0; }
+    body.playing .update-banner { display: none; }
+
+    .admin-list { display: grid; gap: 8px; margin: 18px 0; max-height: 38vh; overflow: auto; }
+
+    .admin-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      min-height: 46px;
+      padding: 0 14px;
+      color: #fff;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: rgba(255,255,255,.04);
+      text-align: left;
+    }
+
+    .admin-item small { color: var(--muted); }
+    .admin-item .btn { min-height: 34px; padding: 0 12px; font-size: 12px; }
+    .admin-select { width: 100%; height: 48px; padding: 0 13px; color: #fff; border: 1px solid var(--line); border-radius: 9px; background: #181818; }
+    .chk { display: inline-flex; align-items: center; gap: 8px; margin: 4px 14px 4px 0; color: #ddd; font-size: 14px; }
+    .chk input { width: 18px; height: 18px; accent-color: #fff; }
+    .chk-grid { margin-bottom: 8px; }
+
     .bottom-nav svg {
       width: 22px;
       height: 22px;
@@ -2240,6 +2331,7 @@
     </header>
 
     <section id="hero" class="hero">
+      <img id="heroImg" class="hero-img" alt="" />
       <div class="hero-content">
         <div class="eyebrow">
           Destaque Lumim
@@ -2379,6 +2471,7 @@
       lastFocus: null,
       live: null,
       update: null,
+      isOwner: false,
       saveChain: Promise.resolve()
     };
 
@@ -2420,8 +2513,20 @@
         if (savedDevice) $("app").classList.remove("hidden");
       }, 1100);
 
+      let lastY = 0;
+
       window.addEventListener("scroll", () => {
-        $("topbar").classList.toggle("scrolled", window.scrollY > 30);
+        const y = window.scrollY;
+        const bar = $("topbar");
+
+        bar.classList.toggle("scrolled", y > 30);
+        bar.classList.toggle(
+          "tb-hide",
+          !isTvMode() && y > lastY && y > 160 &&
+            !document.body.classList.contains("modal-open")
+        );
+
+        lastY = y;
       }, { passive: true });
 
       document.addEventListener("keydown", onKeyDown);
@@ -2590,7 +2695,8 @@
         loadCategories(),
         loadGenres(),
         loadTitles(),
-        loadProgress()
+        loadProgress(),
+        loadOwner()
       ]);
 
       state.lastLoad = Date.now();
@@ -2646,11 +2752,32 @@
                 slug,
                 position
               )
+            ),
+            episodes (
+              id,
+              season,
+              episode_number,
+              name,
+              description,
+              thumbnail_url,
+              video_url,
+              duration,
+              is_premium
             )
           `)
           .order("created_at", { ascending: false }),
         "Erro ao carregar títulos:"
       );
+    }
+
+    async function loadOwner() {
+      state.isOwner = false;
+
+      if (!state.user) return;
+
+      const { data, error } = await db.rpc("is_owner");
+
+      state.isOwner = !error && data === true;
     }
 
     async function loadProgress() {
@@ -3044,10 +3171,15 @@
         $("heroDescription").textContent =
           title.description || "Uma experiência de entretenimento pensada para você.";
 
-        hero.style.setProperty(
-          "--hero-image",
-          `url("${title.backdrop_url || title.poster_url || fallbackImages[0]}")`
-        );
+        const img = $("heroImg");
+
+        img.dataset.fb = fallbackImages[0];
+        img.dataset.fbTried = "";
+        img.style.animation = "none";
+        img.offsetWidth;
+        img.style.animation = "";
+        img.src = title.backdrop_url || title.poster_url || fallbackImages[0];
+        img.classList.toggle("is-poster", !title.backdrop_url && !!title.poster_url);
 
         $("heroPlay").onclick = () => playTitle(title);
         $("heroInfo").onclick = () => openTitle(title);
@@ -3137,8 +3269,9 @@
 
       state.searching = false;
 
-      const continuing = state.titles.filter(
-        title => state.progress[title.id]?.position > 0
+      const continuing = state.titles.filter(title =>
+        state.progress[title.id]?.position > 0 ||
+        title.episodes?.some(item => state.progress[`${title.id}:${item.id}`]?.position > 0)
       );
 
       if (continuing.length) {
@@ -3335,8 +3468,10 @@
       state.activeTitle = title;
 
       const image = title.backdrop_url || title.poster_url || fallbackImages[0];
-      const hasVideo = !!(title.video_url || title.trailer_url);
-      const resumed = state.progress[title.id]?.position > 5;
+      const hasVideo = !!(title.video_url || title.trailer_url || title.episodes?.length);
+      const resumed =
+        state.progress[title.id]?.position > 5 ||
+        title.episodes?.some(item => state.progress[`${title.id}:${item.id}`]?.position > 5);
 
       const modal = createModal(`
         <div class="detail-banner"
@@ -3358,6 +3493,7 @@
                      </button>`
                   : `<button class="btn btn-secondary" disabled>Em breve</button>`
               }
+              ${state.isOwner ? '<button class="btn btn-ghost" data-edit>Editar</button>' : ""}
             </div>
           </div>
         </div>
@@ -3366,10 +3502,75 @@
           <div class="card-genres" style="margin-bottom:18px;font-size:13px">
             ${escapeHtml(getTitleGenres(title).map(genre => genre.name).join(" · "))}
           </div>
+
+          ${
+            title.episodes?.length
+              ? '<div id="seasonBar" class="season-bar"></div><div id="episodeList" class="episode-list"></div>'
+              : ""
+          }
         </div>
       `, { focus: "[data-play]" });
 
+      if (title.episodes?.length) renderEpisodes(title);
+
       modal.querySelector("[data-play]")?.addEventListener("click", () => playTitle(title));
+      modal.querySelector("[data-edit]")?.addEventListener("click", () => openTitleForm(title));
+    }
+
+    const sortedEpisodes = title =>
+      [...(title.episodes || [])].sort(
+        (a, b) => a.season - b.season || a.episode_number - b.episode_number
+      );
+
+    function renderEpisodes(title) {
+      const episodes = sortedEpisodes(title);
+      const seasons = [...new Set(episodes.map(item => item.season))];
+      let current = seasons[0];
+
+      const draw = () => {
+        $("seasonBar").innerHTML = seasons.length > 1
+          ? seasons.map(season =>
+              `<button class="season-button ${season === current ? "active" : ""}" data-s="${season}">Temporada ${season}</button>`
+            ).join("")
+          : "";
+
+        $("episodeList").innerHTML = episodes
+          .filter(item => item.season === current)
+          .map(item => {
+            const saved = state.progress[`${title.id}:${item.id}`]?.position > 5;
+
+            return `
+              <div class="episode">
+                <img src="${escapeAttribute(item.thumbnail_url || title.backdrop_url || title.poster_url || fallbackImages[0])}"
+                  data-fb="${escapeAttribute(fallbackImages[0])}" alt="" loading="lazy" />
+                <div>
+                  <h3>${item.episode_number}. ${escapeHtml(item.name)}</h3>
+                  <p>${escapeHtml(item.description || "")}</p>
+                </div>
+                <button class="btn btn-primary" data-ep="${escapeAttribute(item.id)}">${saved ? "Continuar" : "▶"}</button>
+              </div>`;
+          }).join("");
+
+        $("seasonBar").querySelectorAll("[data-s]").forEach(button => {
+          button.onclick = () => { current = Number(button.dataset.s); draw(); };
+        });
+
+        $("episodeList").querySelectorAll("[data-ep]").forEach(button => {
+          button.onclick = () =>
+            playEpisode(title, episodes.find(item => String(item.id) === button.dataset.ep));
+        });
+      };
+
+      draw();
+    }
+
+    function playEpisode(title, episode) {
+      if (!episode?.video_url) {
+        showToast("Este episódio ainda não possui vídeo cadastrado.");
+        return;
+      }
+
+      openPlayer(title, episode.video_url, episode);
     }
 
     /* =========================================================
@@ -3377,6 +3578,17 @@
     ========================================================= */
 
     function playTitle(title) {
+      if (title?.episodes?.length) {
+        const episodes = sortedEpisodes(title);
+
+        playEpisode(
+          title,
+          episodes.find(item => state.progress[`${title.id}:${item.id}`]?.position > 5) || episodes[0]
+        );
+
+        return;
+      }
+
       const url = title?.video_url || title?.trailer_url;
 
       if (!url) {
@@ -3387,7 +3599,7 @@
       openPlayer(title, url);
     }
 
-    function openPlayer(title, url) {
+    function openPlayer(title, url, episode = null) {
       const media = normalizeVideoUrl(url);
       const isFile = media.type === "file";
 
@@ -3428,6 +3640,7 @@
               <span class="player-spacer"></span>
               <button id="pSpeed" class="player-control-button is-text" aria-label="Velocidade">1×</button>
               <button id="pMute" class="player-control-button" aria-label="Som">🔊</button>
+              <button id="pFull" class="player-control-button" aria-label="Tela cheia">⛶</button>
             </div>
           </div>
         `
@@ -3438,7 +3651,7 @@
           ${body}
 
           <div class="player-topbar">
-            <h2>${escapeHtml(titleName(title))}</h2>
+            <h2>${escapeHtml(titleName(title))}${episode ? ` · T${episode.season} E${episode.episode_number}` : ""}</h2>
             <button id="playerClose" class="player-control-button" aria-label="Fechar player">✕</button>
           </div>
 
@@ -3448,11 +3661,15 @@
 
       $("playerClose").onclick = closeModal;
 
-      if (isFile) bindVideo(title);
-      else state.player = { title, video: null };
+      document.body.classList.add("playing");
+      setFullscreen(true);
+
+      if (isFile) bindVideo(title, episode);
+      else state.player = { title, episode, video: null };
     }
 
-    function bindVideo(title) {
+    function bindVideo(title, episode = null) {
+      const progressKey = episode ? `${title.id}:${episode.id}` : title.id;
       const video = $("lumimVideo");
       const stage = $("playerStage");
 
@@ -3540,7 +3757,7 @@
           title.duration = Math.floor(video.duration);
         }
 
-        const saved = state.progress[title.id]?.position || 0;
+        const saved = state.progress[progressKey]?.position || 0;
 
         if (saved > 5 && isFinite(video.duration) && saved < video.duration - 20) {
           video.currentTime = saved;
@@ -3556,7 +3773,7 @@
 
         ui.time.textContent = `${format(video.currentTime)} / ${format(duration)}`;
 
-        saveProgress(title, video.currentTime, false);
+        saveProgress(title, video.currentTime, false, episode);
       });
 
       video.addEventListener("progress", () => {
@@ -3569,9 +3786,17 @@
       });
 
       video.addEventListener("ended", () => {
-        saveProgress(title, 0, true);
+        saveProgress(title, 0, true, episode);
         sync();
         showControls();
+
+        const list = sortedEpisodes(title);
+        const next = episode && list[list.findIndex(item => item.id === episode.id) + 1];
+
+        if (next?.video_url) {
+          showToast(`A seguir: ${next.name}`);
+          setTimeout(() => { if (state.player?.video === video) playEpisode(title, next); }, 1800);
+        }
       });
 
       const seekFromPointer = event => {
@@ -3615,6 +3840,14 @@
         showControls();
       };
 
+      let fullscreen = true;
+
+      $("pFull").onclick = () => {
+        fullscreen = !fullscreen;
+        setFullscreen(fullscreen);
+        showControls();
+      };
+
       $("videoRetry").onclick = () => {
         ui.error.classList.add("hidden");
         ui.loading.classList.remove("hidden");
@@ -3636,6 +3869,7 @@
 
       state.player = {
         title,
+        episode,
         video,
         stage,
         toggle,
@@ -3725,7 +3959,7 @@
       }
     }
 
-    function saveProgress(title, position, force) {
+    function saveProgress(title, position, force, episode = null) {
       if (!state.user || !title?.id) return;
 
       const now = Date.now();
@@ -3737,29 +3971,39 @@
       const seconds = Math.max(0, Math.floor(position || 0));
       const userId = state.user.id;
 
-      state.progress[title.id] = {
-        ...(state.progress[title.id] || {}),
+      const key = episode ? `${title.id}:${episode.id}` : title.id;
+
+      state.progress[key] = {
+        ...(state.progress[key] || {}),
         user_id: userId,
         title_id: title.id,
+        episode_id: episode?.id ?? null,
         position: seconds
       };
 
       state.saveChain = state.saveChain.then(async () => {
         try {
-          const { data, error } = await db
+          let query = db
             .from("watch_progress")
-            .update({ position: seconds })
+            .update({ position: seconds, updated_at: new Date().toISOString() })
             .eq("user_id", userId)
-            .eq("title_id", title.id)
-            .is("episode_id", null)
-            .select();
+            .eq("title_id", title.id);
+
+          query = episode ? query.eq("episode_id", episode.id) : query.is("episode_id", null);
+
+          const { data, error } = await query.select();
 
           if (error) throw error;
 
           if (!data?.length) {
             const { error: insertError } = await db
               .from("watch_progress")
-              .insert({ user_id: userId, title_id: title.id, position: seconds });
+              .insert({
+                user_id: userId,
+                title_id: title.id,
+                episode_id: episode?.id ?? null,
+                position: seconds
+              });
 
             if (insertError) throw insertError;
           }
@@ -3770,6 +4014,22 @@
           }
         }
       });
+    }
+
+    function setFullscreen(enabled) {
+      const result = plugin("ApkInstaller")?.setFullscreen?.({
+        enabled,
+        landscape: !isTvMode()
+      });
+
+      result?.catch?.(() => {});
+
+      if (!IS_NATIVE) {
+        try {
+          if (enabled) document.documentElement.requestFullscreen?.()?.catch?.(() => {});
+          else if (document.fullscreenElement) document.exitFullscreen();
+        } catch {}
+      }
     }
 
     function normalizeVideoUrl(url) {
@@ -3867,6 +4127,7 @@
           </div>
 
           <div class="settings-actions">
+            ${state.isOwner ? '<button class="btn btn-primary" data-act="admin">Painel do proprietário</button>' : ""}
             <button class="btn btn-ghost" data-act="update">Verificar atualização</button>
             <button class="btn btn-ghost" data-act="device">Trocar dispositivo</button>
             <button class="btn btn-ghost" data-act="logout">Sair da conta</button>
@@ -3885,6 +4146,9 @@
           showToast("Perfil selecionado.");
         };
       });
+
+      const adminButton = modal.querySelector('[data-act="admin"]');
+      if (adminButton) adminButton.onclick = openAdmin;
 
       modal.querySelector('[data-act="update"]').onclick = () => {
         closeModal();
@@ -3999,12 +4263,17 @@
         const video = player.video;
 
         if (!video.ended && video.currentTime > 0) {
-          saveProgress(player.title, video.currentTime, true);
+          saveProgress(player.title, video.currentTime, true, player.episode);
         }
 
         video.pause();
         video.removeAttribute("src");
         video.load();
+      }
+
+      if (player) {
+        document.body.classList.remove("playing");
+        setFullscreen(false);
       }
 
       state.player = null;
@@ -4058,6 +4327,330 @@
 
     function escapeAttribute(value) {
       return escapeHtml(value);
+    }
+
+
+    /* =========================================================
+       PAINEL DO PROPRIETÁRIO (requer permissão no Supabase)
+    ========================================================= */
+
+    const field = (id, label, value = "", type = "text") => `
+      <div class="field">
+        <label for="${id}">${label}</label>
+        <input id="${id}" type="${type}" value="${escapeAttribute(value ?? "")}" />
+      </div>`;
+
+    function openAdmin() {
+      const modal = createModal(`
+        <div class="profile-panel">
+          <h2>Painel do proprietário</h2>
+
+          <div class="settings-actions" style="margin-top:0">
+            <button class="btn btn-primary" data-a="title">＋ Novo filme ou série</button>
+            <button class="btn btn-ghost" data-a="genres">Gerenciar gêneros</button>
+          </div>
+
+          <div class="admin-list">
+            ${
+              state.titles.map(title => `
+                <button class="admin-item" data-id="${escapeAttribute(title.id)}">
+                  ${escapeHtml(titleName(title))}
+                  <small>${escapeHtml(title.type || "")}</small>
+                </button>`).join("") ||
+              '<div class="empty-state">Nenhum título ainda.</div>'
+            }
+          </div>
+        </div>
+      `, { focus: '[data-a="title"]' });
+
+      modal.querySelector('[data-a="title"]').onclick = () => openTitleForm(null);
+      modal.querySelector('[data-a="genres"]').onclick = openGenres;
+
+      modal.querySelectorAll(".admin-item").forEach(button => {
+        button.onclick = () => openTitleForm(
+          state.titles.find(title => String(title.id) === button.dataset.id)
+        );
+      });
+    }
+
+    function openTitleForm(title) {
+      const selected = new Set(getTitleGenres(title || {}).map(genre => String(genre.id)));
+
+      const modal = createModal(`
+        <div class="profile-panel">
+          <h2>${title ? "Editar título" : "Novo título"}</h2>
+
+          ${field("ft-name", "Nome", title ? titleName(title) : "")}
+
+          <div class="field">
+            <label for="ft-type">Tipo</label>
+            <select id="ft-type" class="admin-select">
+              ${["Filme", "Série"].map(type =>
+                `<option ${normalizeText(title?.type) === normalizeText(type) ? "selected" : ""}>${type}</option>`
+              ).join("")}
+            </select>
+          </div>
+
+          ${field("ft-year", "Ano", title?.year, "number")}
+          ${field("ft-desc", "Descrição", title?.description)}
+          ${field("ft-poster", "Link do pôster (imagem vertical)", title?.poster_url)}
+          ${field("ft-back", "Link do fundo (imagem horizontal)", title?.backdrop_url)}
+          ${field("ft-video", "Link do vídeo (mp4, YouTube ou Vimeo)", title?.video_url)}
+          ${field("ft-trailer", "Link do trailer (opcional)", title?.trailer_url)}
+          ${field("ft-dur", "Duração em segundos (opcional)", title?.duration, "number")}
+
+          <label class="chk">
+            <input id="ft-feat" type="checkbox" ${title?.featured ? "checked" : ""} />
+            Mostrar em destaque
+          </label>
+
+          <div class="field"><label>Gêneros</label></div>
+
+          <div id="ft-genres" class="chk-grid">
+            ${
+              state.genres.map(genre => `
+                <label class="chk">
+                  <input type="checkbox" value="${escapeAttribute(genre.id)}"
+                    ${selected.has(String(genre.id)) ? "checked" : ""} />
+                  ${escapeHtml(genre.name)}
+                </label>`).join("") ||
+              '<span class="settings-info">Crie gêneros primeiro.</span>'
+            }
+          </div>
+
+          <div class="settings-actions">
+            <button class="btn btn-primary" id="ft-save">Salvar</button>
+            ${title ? '<button class="btn btn-ghost" id="ft-eps">Gerenciar episódios</button>' : ""}
+            ${title ? '<button class="btn btn-ghost" id="ft-del">Excluir título</button>' : ""}
+          </div>
+        </div>
+      `, { focus: "#ft-name" });
+
+      $("ft-save").onclick = () => saveTitle(title);
+
+      const del = $("ft-del");
+      if (del) del.onclick = () => deleteTitle(title);
+
+      const eps = $("ft-eps");
+      if (eps) eps.onclick = () => openEpisodes(title.id);
+
+      modal.scrollTop = 0;
+    }
+
+    async function saveTitle(existing) {
+      const read = id => $(id).value.trim();
+      const nameKey = state.titles.some(item => "title" in item && !("name" in item)) ? "title" : "name";
+
+      if (!read("ft-name")) {
+        showToast("Informe o nome do título.");
+        return;
+      }
+
+      const row = {
+        [nameKey]: read("ft-name"),
+        type: $("ft-type").value,
+        description: read("ft-desc") || null,
+        poster_url: read("ft-poster") || null,
+        backdrop_url: read("ft-back") || null,
+        video_url: read("ft-video") || null,
+        trailer_url: read("ft-trailer") || null,
+        featured: $("ft-feat").checked,
+        is_series: $("ft-type").value === "Série"
+      };
+
+      const year = parseInt(read("ft-year"), 10);
+      const duration = parseInt(read("ft-dur"), 10);
+
+      if (year) row.year = year;
+      if (duration) row.duration = duration;
+
+      const button = $("ft-save");
+      button.disabled = true;
+
+      try {
+        let id = existing?.id;
+
+        if (id) {
+          const { error } = await db.from("titles").update(row).eq("id", id);
+          if (error) throw error;
+        } else {
+          const { data, error } = await db.from("titles").insert(row).select().single();
+          if (error) throw error;
+          id = data.id;
+        }
+
+        const genreIds = [...document.querySelectorAll("#ft-genres input:checked")]
+          .map(input => input.value);
+
+        const cleared = await db.from("title_genres").delete().eq("title_id", id);
+        if (cleared.error) throw cleared.error;
+
+        if (genreIds.length) {
+          const { error } = await db
+            .from("title_genres")
+            .insert(genreIds.map(genre => ({ title_id: id, genre_id: genre })));
+
+          if (error) throw error;
+        }
+
+        closeModal();
+        showToast("Salvo! Já aparece para todos.");
+        await refreshCatalog();
+      } catch (error) {
+        button.disabled = false;
+        showToast("Não foi possível salvar: " + (error.message || "erro desconhecido"));
+      }
+    }
+
+    async function deleteTitle(title) {
+      if (!confirm(`Excluir "${titleName(title)}"?`)) return;
+
+      try {
+        await db.from("title_genres").delete().eq("title_id", title.id);
+        await db.from("category_titles").delete().eq("title_id", title.id);
+
+        const { error } = await db.from("titles").delete().eq("id", title.id);
+        if (error) throw error;
+
+        closeModal();
+        showToast("Título excluído.");
+        await refreshCatalog();
+      } catch (error) {
+        showToast("Não foi possível excluir: " + (error.message || "erro"));
+      }
+    }
+
+    function openEpisodes(titleId) {
+      const title = state.titles.find(item => String(item.id) === String(titleId));
+      const episodes = sortedEpisodes(title);
+      const last = episodes[episodes.length - 1];
+
+      const modal = createModal(`
+        <div class="profile-panel">
+          <h2>Episódios · ${escapeHtml(titleName(title))}</h2>
+
+          <div class="admin-list">
+            ${
+              episodes.map(item => `
+                <div class="admin-item">
+                  <span>T${item.season} E${item.episode_number} · ${escapeHtml(item.name)}</span>
+                  <button class="btn btn-ghost" data-del="${escapeAttribute(item.id)}">Excluir</button>
+                </div>`).join("") ||
+              '<div class="empty-state">Nenhum episódio ainda.</div>'
+            }
+          </div>
+
+          ${field("e-season", "Temporada", last?.season || 1, "number")}
+          ${field("e-number", "Número do episódio", (last?.episode_number || 0) + 1, "number")}
+          ${field("e-name", "Nome do episódio")}
+          ${field("e-video", "Link do vídeo (mp4, YouTube ou Vimeo)")}
+          ${field("e-thumb", "Link da miniatura (opcional)")}
+
+          <button class="btn btn-primary" id="e-add" style="width:100%">Adicionar episódio</button>
+        </div>
+      `, { focus: "#e-name" });
+
+      $("e-add").onclick = async () => {
+        const name = $("e-name").value.trim();
+        const video = $("e-video").value.trim();
+
+        if (!name || !video) {
+          showToast("Informe o nome e o link do vídeo.");
+          return;
+        }
+
+        const { error } = await db.from("episodes").insert({
+          title_id: title.id,
+          season: parseInt($("e-season").value, 10) || 1,
+          episode_number: parseInt($("e-number").value, 10) || 1,
+          name,
+          video_url: video,
+          thumbnail_url: $("e-thumb").value.trim() || null
+        });
+
+        if (error) {
+          showToast("Não foi possível adicionar: " + error.message);
+          return;
+        }
+
+        await refreshCatalog();
+        openEpisodes(title.id);
+      };
+
+      modal.querySelectorAll("[data-del]").forEach(button => {
+        button.onclick = async () => {
+          if (!confirm("Excluir este episódio?")) return;
+
+          const { error } = await db.from("episodes").delete().eq("id", button.dataset.del);
+
+          if (error) {
+            showToast("Não foi possível excluir: " + error.message);
+            return;
+          }
+
+          await refreshCatalog();
+          openEpisodes(title.id);
+        };
+      });
+    }
+
+    function openGenres() {
+      const modal = createModal(`
+        <div class="profile-panel">
+          <h2>Gêneros</h2>
+
+          <div class="admin-list">
+            ${
+              state.genres.map(genre => `
+                <div class="admin-item">
+                  <span>${escapeHtml(genre.name)}</span>
+                  <button class="btn btn-ghost" data-del="${escapeAttribute(genre.id)}">Excluir</button>
+                </div>`).join("") ||
+              '<div class="empty-state">Nenhum gênero ainda.</div>'
+            }
+          </div>
+
+          ${field("g-name", "Novo gênero")}
+          <button class="btn btn-primary" id="g-add" style="width:100%">Adicionar</button>
+        </div>
+      `, { focus: "#g-name" });
+
+      $("g-add").onclick = async () => {
+        const name = $("g-name").value.trim();
+
+        if (!name) return;
+
+        const slug = normalizeText(name).replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+        const position = Math.max(0, ...state.genres.map(genre => Number(genre.position) || 0)) + 1;
+
+        const { error } = await db.from("genres").insert({ name, slug, position });
+
+        if (error) {
+          showToast("Não foi possível criar: " + error.message);
+          return;
+        }
+
+        await refreshCatalog();
+        openGenres();
+      };
+
+      modal.querySelectorAll("[data-del]").forEach(button => {
+        button.onclick = async () => {
+          if (!confirm("Excluir este gênero?")) return;
+
+          await db.from("title_genres").delete().eq("genre_id", button.dataset.del);
+
+          const { error } = await db.from("genres").delete().eq("id", button.dataset.del);
+
+          if (error) {
+            showToast("Não foi possível excluir: " + error.message);
+            return;
+          }
+
+          await refreshCatalog();
+          openGenres();
+        };
+      });
     }
 
     /* =========================================================
