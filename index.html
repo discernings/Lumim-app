@@ -14,6 +14,8 @@
   <meta name="github-repo" content="__GH_REPO__" />
 
   <title>Lumim</title>
+  <link rel="icon" type="image/png" href="logo.png" />
+  <link rel="apple-touch-icon" href="logo.png" />
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
@@ -2124,6 +2126,71 @@
     .chk input { width: 18px; height: 18px; accent-color: #fff; }
     .chk-grid { margin-bottom: 8px; }
 
+    /* ===== v4: modo lite (TV) — menos GPU, menos memória ===== */
+
+    html { scroll-behavior: auto; }
+    body.lite, body.lite * { scroll-behavior: auto !important; }
+    body.lite *, body.lite *::before, body.lite *::after { animation: none !important; }
+    body.lite .splash, body.lite .splash * { transition: none !important; }
+
+    body.lite .leaf-glow,
+    body.lite .chooser-background,
+    body.lite .device-card::before { display: none; }
+
+    body.lite .intro-leaf,
+    body.lite .mini-brand img,
+    body.lite .chooser-brand img,
+    body.lite .login-leaf { mix-blend-mode: normal; filter: none; }
+
+    body.lite .topbar,
+    body.lite .topbar.scrolled,
+    body.lite .modal-backdrop,
+    body.lite .btn-secondary,
+    body.lite .bottom-nav { backdrop-filter: none; }
+
+    body.lite .topbar.scrolled { background: #050505; }
+
+    body.lite .reveal { opacity: 1; transform: none; transition: none; }
+    body.lite .sk-title, body.lite .sk-card { background: #151515; }
+
+    body.lite .media-row { scroll-snap-type: none; }
+
+    body.lite .content-section {
+      content-visibility: auto;
+      contain-intrinsic-size: auto 300px;
+    }
+
+    body.lite .media-card {
+      isolation: auto;
+      box-shadow: none;
+      transition: transform .12s linear;
+    }
+
+    body.lite .media-card img { transition: none; }
+    body.lite .media-card:hover img,
+    body.lite .media-card:focus-visible img { transform: none; filter: none; }
+    body.lite .media-card:hover { transform: none; box-shadow: none; }
+
+    body.lite .media-card:focus-visible {
+      transform: scale(1.05);
+      box-shadow: none;
+      outline: 3px solid #fff;
+      outline-offset: 3px;
+    }
+
+    body.lite button:focus-visible,
+    body.lite [tabindex]:focus-visible,
+    body.lite input:focus-visible { box-shadow: none; }
+
+    body.lite .modal { box-shadow: none; }
+    body.lite .toast, body.lite .update-banner { box-shadow: none; }
+    body.lite .hero-img { transition: none; }
+    body.lite .hero-content { transition: none; }
+
+    .admin-link { flex: 1; min-height: 44px; color: #fff; background: transparent; text-align: left; }
+    .admin-sub { margin: 24px 0 12px; font-size: 15px; }
+    .admin-text { width: 100%; padding: 12px; color: #fff; border: 1px solid var(--line); border-radius: 9px; background: #181818; font: inherit; resize: vertical; }
+
     .bottom-nav svg {
       width: 22px;
       height: 22px;
@@ -2143,7 +2210,7 @@
 
       <img
         class="intro-leaf"
-        src="1000002482.jpg"
+        src="logo.png"
         alt="Símbolo do Lumim"
       />
     </div>
@@ -2155,7 +2222,7 @@
     <div class="chooser-content">
       <div class="chooser-brand">
         <img
-          src="1000002482.jpg"
+          src="logo.png"
           alt="Lumim"
         />
 
@@ -2266,7 +2333,7 @@
         aria-label="Ir para o início"
       >
         <span class="mini-brand">
-          <img src="1000002482.jpg" alt="" />
+          <img src="logo.png" alt="" />
           <strong>Lumim</strong>
         </span>
       </button>
@@ -2477,6 +2544,19 @@
 
     const isTvMode = () => document.body.classList.contains("mode-tv");
 
+    function sized(url, kind) {
+      const original = String(url || "");
+
+      if (!original) return original;
+
+      const tmdb = kind === "card" ? 342 : kind === "hero" ? (isTvMode() ? 780 : 1280) : 780;
+      const unsplash = kind === "card" ? 400 : isTvMode() ? 800 : 1280;
+
+      return original
+        .replace(/(image\.tmdb\.org\/t\/p\/)(?:original|w\d+)\//, `$1w${tmdb}/`)
+        .replace(/(images\.unsplash\.com[^\s"']*[?&]w=)\d+/, `$1${unsplash}`);
+    }
+
     /* Imagem quebrada: tenta o reserva, senão esconde */
     document.addEventListener("error", event => {
       const img = event.target;
@@ -2484,6 +2564,12 @@
       if (!(img instanceof HTMLImageElement)) return;
 
       const fallback = img.dataset.fb;
+
+      if (img.dataset.orig && !img.dataset.origTried) {
+        img.dataset.origTried = "1";
+        img.src = img.dataset.orig;
+        return;
+      }
 
       if (fallback && !img.dataset.fbTried) {
         img.dataset.fbTried = "1";
@@ -2500,6 +2586,8 @@
     document.addEventListener("DOMContentLoaded", () => {
       const savedDevice = getSavedDevice();
 
+      if (isTvEnvironment()) document.body.classList.add("lite");
+
       if (savedDevice) {
         applyDeviceMode(savedDevice);
         closeDeviceChooserImmediately();
@@ -2514,17 +2602,20 @@
       }, 1100);
 
       let lastY = 0;
+      let lastScrolled = false;
+      let lastHide = false;
 
       window.addEventListener("scroll", () => {
         const y = window.scrollY;
         const bar = $("topbar");
 
-        bar.classList.toggle("scrolled", y > 30);
-        bar.classList.toggle(
-          "tb-hide",
+        const scrolled = y > 30;
+        const hide =
           !isTvMode() && y > lastY && y > 160 &&
-            !document.body.classList.contains("modal-open")
-        );
+          !document.body.classList.contains("modal-open");
+
+        if (scrolled !== lastScrolled) bar.classList.toggle("scrolled", (lastScrolled = scrolled));
+        if (hide !== lastHide) bar.classList.toggle("tb-hide", (lastHide = hide));
 
         lastY = y;
       }, { passive: true });
@@ -2610,7 +2701,7 @@
         <div class="modal-backdrop">
           <form class="login-card" onsubmit="handleLogin(event)">
             <div class="login-brand">
-              <img class="login-leaf" src="1000002482.jpg" alt="Símbolo do Lumim" />
+              <img class="login-leaf" src="logo.png" alt="Símbolo do Lumim" />
             </div>
 
             <div class="field">
@@ -2800,13 +2891,37 @@
     }
 
     /* Atualização dinâmica do catálogo */
+    const catalogSignature = () =>
+      state.titles
+        .map(title => `${title.id}${title.updated_at || ""}${title.episodes?.length || 0}`)
+        .join("|") + "#" + state.genres.map(genre => genre.name).join(",");
+
+    function refreshContinue() {
+      const old = document.querySelector('#content [data-kind="continue"]');
+      const list = continuingTitles();
+
+      old?.remove();
+
+      if (list.length && !state.searching) {
+        $("content").prepend(createSection("Continuar assistindo", list, { progress: true }));
+        observeReveals();
+      }
+    }
+
     async function refreshCatalog() {
       if (!state.user) return;
+
+      const before = catalogSignature();
 
       await Promise.all([loadGenres(), loadCategories(), loadTitles(), loadProgress()]);
       state.lastLoad = Date.now();
 
       if (state.searching) return;
+
+      if (before === catalogSignature()) {
+        refreshContinue();
+        return;
+      }
 
       setupHero();
       renderHome();
@@ -2815,7 +2930,7 @@
     function maybeRefresh() {
       if (!state.user || state.player) return;
       if (document.body.classList.contains("modal-open")) return;
-      if (Date.now() - state.lastLoad < 5 * 60 * 1000) return;
+      if (Date.now() - state.lastLoad < (isTvMode() ? 15 : 5) * 60 * 1000) return;
 
       refreshCatalog();
     }
@@ -2901,6 +3016,7 @@
     function applyDeviceMode(device) {
       document.body.classList.remove("mode-mobile", "mode-tv");
       document.body.classList.add(`mode-${device}`);
+      document.body.classList.toggle("lite", device === "tv");
     }
 
     function chooseDevice(device) {
@@ -3024,7 +3140,54 @@
         return;
       }
 
-      if (key.startsWith("Arrow")) spatialNavigate(event);
+      if (key.startsWith("Arrow")) {
+        if (isTvMode()) {
+          const now = performance.now();
+
+          if (now - lastNav < 75) {
+            event.preventDefault();
+            return;
+          }
+
+          lastNav = now;
+        }
+
+        spatialNavigate(event);
+      }
+    }
+
+    let lastNav = 0;
+
+    /* Sem medir a tela: usa a estrutura das fileiras. undefined = usar o método geral */
+    function fastTarget(current, direction) {
+      if (current.classList?.contains("media-card") && current.parentElement?.classList.contains("media-row")) {
+        const row = current.parentElement;
+
+        if (direction === "right") return current.nextElementSibling || null;
+        if (direction === "left") return current.previousElementSibling || null;
+
+        const index = [...row.children].indexOf(current);
+        const step = direction === "down" ? "nextElementSibling" : "previousElementSibling";
+        let section = current.closest(".content-section")?.[step];
+
+        while (section && !section.querySelector(".media-card")) section = section[step];
+
+        if (section) {
+          const cards = section.querySelectorAll(".media-row > .media-card");
+
+          return cards[Math.min(index, cards.length - 1)] || null;
+        }
+
+        return direction === "up" ? $("heroPlay") : null;
+      }
+
+      if (current.closest?.("#hero") && direction === "down") {
+        return document.querySelector("#content .media-row > .media-card") || undefined;
+      }
+
+      if (current.closest?.("#topbar") && direction === "down") return $("heroPlay");
+
+      return undefined;
     }
 
     function spatialNavigate(event) {
@@ -3038,6 +3201,16 @@
       const current = document.activeElement;
 
       if (isTextInput(current) && (direction === "left" || direction === "right")) return;
+
+      if (current && current !== document.body && !document.body.classList.contains("modal-open")) {
+        const fast = fastTarget(current, direction);
+
+        if (fast !== undefined) {
+          event.preventDefault();
+          if (fast) focusElement(fast);
+          return;
+        }
+      }
       if (current?.tagName === "SELECT" || current?.tagName === "VIDEO") return;
 
       const scope =
@@ -3055,6 +3228,7 @@
         ...document.querySelectorAll("#updateBanner button")
       ].filter(element => {
         if (element.disabled || element.tabIndex < 0) return false;
+        if (scope === $("app") && element.classList.contains("media-card")) return false;
         if (element.closest(".hidden, .hidden-control")) return false;
 
         const rect = element.getBoundingClientRect();
@@ -3115,14 +3289,14 @@
       element.focus({ preventScroll: true });
 
       if (element.closest(".topbar")) {
-        window.scrollTo({ top: 0, behavior: prefersReduced ? "auto" : "smooth" });
+        window.scrollTo({ top: 0, behavior: prefersReduced || isTvMode() ? "auto" : "smooth" });
         return;
       }
 
       element.scrollIntoView({
         block: "center",
         inline: "center",
-        behavior: prefersReduced ? "auto" : "smooth"
+        behavior: prefersReduced || isTvMode() ? "auto" : "smooth"
       });
     }
 
@@ -3178,13 +3352,18 @@
         img.style.animation = "none";
         img.offsetWidth;
         img.style.animation = "";
-        img.src = title.backdrop_url || title.poster_url || fallbackImages[0];
+        const heroSource = title.backdrop_url || title.poster_url || fallbackImages[0];
+        const heroSized = sized(heroSource, title.backdrop_url ? "hero" : "detail");
+
+        img.dataset.orig = heroSized !== heroSource ? heroSource : "";
+        img.dataset.origTried = "";
+        img.src = heroSized;
         img.classList.toggle("is-poster", !title.backdrop_url && !!title.poster_url);
 
         $("heroPlay").onclick = () => playTitle(title);
         $("heroInfo").onclick = () => openTitle(title);
 
-        $("heroDots").innerHTML = state.heroList.length > 1
+        $("heroDots").innerHTML = state.heroList.length > 1 && !isTvMode()
           ? state.heroList
               .map((_, index) =>
                 `<i class="${index === state.heroIndex ? "active" : ""}"></i>`
@@ -3207,13 +3386,13 @@
       const next = state.heroList[(state.heroIndex + 1) % state.heroList.length];
       const preload = next?.backdrop_url || next?.poster_url;
 
-      if (preload) new Image().src = preload;
+      if (preload && !isTvMode()) new Image().src = sized(preload, "hero");
     }
 
     function restartHeroTimer() {
       clearInterval(state.heroTimer);
 
-      if (state.heroList.length < 2 || prefersReduced) return;
+      if (state.heroList.length < 2 || prefersReduced || isTvMode()) return;
 
       state.heroTimer = setInterval(() => {
         if (
@@ -3263,16 +3442,20 @@
       return section;
     }
 
+    function continuingTitles() {
+      return state.titles.filter(title =>
+        state.progress[title.id]?.position > 0 ||
+        title.episodes?.some(item => state.progress[`${title.id}:${item.id}`]?.position > 0)
+      );
+    }
+
     function renderHome() {
       const content = $("content");
       const fragment = document.createDocumentFragment();
 
       state.searching = false;
 
-      const continuing = state.titles.filter(title =>
-        state.progress[title.id]?.position > 0 ||
-        title.episodes?.some(item => state.progress[`${title.id}:${item.id}`]?.position > 0)
-      );
+      const continuing = continuingTitles();
 
       if (continuing.length) {
         fragment.appendChild(
@@ -3311,7 +3494,7 @@
     function observeReveals() {
       const items = document.querySelectorAll("#content .reveal:not(.in)");
 
-      if (!("IntersectionObserver" in window) || prefersReduced) {
+      if (!("IntersectionObserver" in window) || prefersReduced || isTvMode()) {
         items.forEach(item => item.classList.add("in"));
         return;
       }
@@ -3332,6 +3515,7 @@
       const section = document.createElement("section");
 
       section.className = "content-section reveal";
+      section.dataset.kind = name === "Continuar assistindo" ? "continue" : "row";
 
       section.innerHTML = `
         <div class="section-heading">
@@ -3348,7 +3532,7 @@
 
       const row = section.querySelector(grid ? ".catalog-grid" : ".media-row");
 
-      (grid ? titles : titles.slice(0, 16)).forEach(title => {
+      (grid ? titles : titles.slice(0, isTvMode() ? 12 : 16)).forEach(title => {
         row.appendChild(createCard(title, progress));
       });
 
@@ -3372,7 +3556,8 @@
             fallbackImages.length
         ];
 
-      const image = title.poster_url || fallback;
+      const rawImage = title.poster_url || fallback;
+      const image = sized(rawImage, "card");
       const progress = state.progress[title.id];
 
       const percentage =
@@ -3387,6 +3572,7 @@
 
       card.innerHTML = `
         <img src="${escapeAttribute(image)}"
+          data-orig="${image !== rawImage ? escapeAttribute(rawImage) : ""}"
           data-fb="${escapeAttribute(fallback)}"
           alt="${escapeAttribute(titleName(title))}"
           loading="lazy" decoding="async" />
@@ -3396,7 +3582,11 @@
 
           <div class="card-meta">
             <span>${escapeHtml(title.year || "")}</span>
-            <span>${escapeHtml(title.type || "Filme")}</span>
+            <span>${escapeHtml(
+              title.episodes?.length
+                ? `${new Set(title.episodes.map(item => item.season)).size} temp.`
+                : title.type || "Filme"
+            )}</span>
           </div>
 
           ${genres ? `<div class="card-genres">${escapeHtml(genres)}</div>` : ""}
@@ -3469,13 +3659,14 @@
 
       const image = title.backdrop_url || title.poster_url || fallbackImages[0];
       const hasVideo = !!(title.video_url || title.trailer_url || title.episodes?.length);
+      const isSeries = title.is_series || normalizeText(title.type).includes("serie");
       const resumed =
         state.progress[title.id]?.position > 5 ||
         title.episodes?.some(item => state.progress[`${title.id}:${item.id}`]?.position > 5);
 
       const modal = createModal(`
         <div class="detail-banner"
-          style="background-image:url('${escapeAttribute(image)}')">
+          style="background-image:url('${escapeAttribute(sized(image, "detail"))}')">
           <div class="detail-content">
             <div class="eyebrow">
               ${escapeHtml(title.type || "Filme")} · ${escapeHtml(title.year || "")}
@@ -3493,6 +3684,7 @@
                      </button>`
                   : `<button class="btn btn-secondary" disabled>Em breve</button>`
               }
+              ${state.isOwner && isSeries ? '<button class="btn btn-secondary" data-eps>Episódios</button>' : ""}
               ${state.isOwner ? '<button class="btn btn-ghost" data-edit>Editar</button>' : ""}
             </div>
           </div>
@@ -3514,6 +3706,7 @@
       if (title.episodes?.length) renderEpisodes(title);
 
       modal.querySelector("[data-play]")?.addEventListener("click", () => playTitle(title));
+      modal.querySelector("[data-eps]")?.addEventListener("click", () => openEpisodes(title.id));
       modal.querySelector("[data-edit]")?.addEventListener("click", () => openTitleForm(title));
     }
 
@@ -4274,6 +4467,7 @@
       if (player) {
         document.body.classList.remove("playing");
         setFullscreen(false);
+        setTimeout(() => { if (!state.searching && !state.player) refreshContinue(); }, 400);
       }
 
       state.player = null;
@@ -4346,7 +4540,8 @@
           <h2>Painel do proprietário</h2>
 
           <div class="settings-actions" style="margin-top:0">
-            <button class="btn btn-primary" data-a="title">＋ Novo filme ou série</button>
+            <button class="btn btn-primary" data-a="title">＋ Novo filme</button>
+            <button class="btn btn-primary" data-a="series">＋ Nova série</button>
             <button class="btn btn-ghost" data-a="genres">Gerenciar gêneros</button>
           </div>
 
@@ -4364,6 +4559,7 @@
       `, { focus: '[data-a="title"]' });
 
       modal.querySelector('[data-a="title"]').onclick = () => openTitleForm(null);
+      modal.querySelector('[data-a="series"]').onclick = () => openTitleForm(null, { type: "Série" });
       modal.querySelector('[data-a="genres"]').onclick = openGenres;
 
       modal.querySelectorAll(".admin-item").forEach(button => {
@@ -4373,7 +4569,7 @@
       });
     }
 
-    function openTitleForm(title) {
+    function openTitleForm(title, preset = {}) {
       const selected = new Set(getTitleGenres(title || {}).map(genre => String(genre.id)));
 
       const modal = createModal(`
@@ -4386,7 +4582,7 @@
             <label for="ft-type">Tipo</label>
             <select id="ft-type" class="admin-select">
               ${["Filme", "Série"].map(type =>
-                `<option ${normalizeText(title?.type) === normalizeText(type) ? "selected" : ""}>${type}</option>`
+                `<option ${normalizeText(title?.type ?? preset.type) === normalizeText(type) ? "selected" : ""}>${type}</option>`
               ).join("")}
             </select>
           </div>
@@ -4395,7 +4591,7 @@
           ${field("ft-desc", "Descrição", title?.description)}
           ${field("ft-poster", "Link do pôster (imagem vertical)", title?.poster_url)}
           ${field("ft-back", "Link do fundo (imagem horizontal)", title?.backdrop_url)}
-          ${field("ft-video", "Link do vídeo (mp4, YouTube ou Vimeo)", title?.video_url)}
+          ${field("ft-video", "Link do vídeo (só para filmes; série usa os episódios)", title?.video_url)}
           ${field("ft-trailer", "Link do trailer (opcional)", title?.trailer_url)}
           ${field("ft-dur", "Duração em segundos (opcional)", title?.duration, "number")}
 
@@ -4494,8 +4690,10 @@
         }
 
         closeModal();
-        showToast("Salvo! Já aparece para todos.");
+        showToast(row.is_series ? "Série salva! Agora adicione os episódios." : "Salvo! Já aparece para todos.");
         await refreshCatalog();
+
+        if (row.is_series) openEpisodes(id);
       } catch (error) {
         button.disabled = false;
         showToast("Não foi possível salvar: " + (error.message || "erro desconhecido"));
@@ -4520,7 +4718,7 @@
       }
     }
 
-    function openEpisodes(titleId) {
+    function openEpisodes(titleId, editing = null) {
       const title = state.titles.find(item => String(item.id) === String(titleId));
       const episodes = sortedEpisodes(title);
       const last = episodes[episodes.length - 1];
@@ -4528,54 +4726,141 @@
       const modal = createModal(`
         <div class="profile-panel">
           <h2>Episódios · ${escapeHtml(titleName(title))}</h2>
+          <div class="settings-info" style="text-align:left">Toque em um episódio para editar.</div>
 
           <div class="admin-list">
             ${
               episodes.map(item => `
                 <div class="admin-item">
-                  <span>T${item.season} E${item.episode_number} · ${escapeHtml(item.name)}</span>
+                  <button class="admin-link" data-edit="${escapeAttribute(item.id)}">
+                    T${item.season} E${item.episode_number} · ${escapeHtml(item.name)}
+                  </button>
                   <button class="btn btn-ghost" data-del="${escapeAttribute(item.id)}">Excluir</button>
                 </div>`).join("") ||
               '<div class="empty-state">Nenhum episódio ainda.</div>'
             }
           </div>
 
-          ${field("e-season", "Temporada", last?.season || 1, "number")}
-          ${field("e-number", "Número do episódio", (last?.episode_number || 0) + 1, "number")}
-          ${field("e-name", "Nome do episódio")}
-          ${field("e-video", "Link do vídeo (mp4, YouTube ou Vimeo)")}
-          ${field("e-thumb", "Link da miniatura (opcional)")}
+          <h3 class="admin-sub">${editing ? "Editar episódio" : "Novo episódio"}</h3>
 
-          <button class="btn btn-primary" id="e-add" style="width:100%">Adicionar episódio</button>
+          ${field("e-season", "Temporada", editing?.season ?? last?.season ?? 1, "number")}
+          ${field("e-number", "Número do episódio", editing?.episode_number ?? (last ? last.episode_number + 1 : 1), "number")}
+          ${field("e-name", "Nome do episódio", editing?.name)}
+          ${field("e-desc", "Descrição (opcional)", editing?.description)}
+          ${field("e-video", "Link do vídeo (mp4, YouTube ou Vimeo)", editing?.video_url)}
+          ${field("e-thumb", "Link da miniatura (opcional)", editing?.thumbnail_url)}
+          ${field("e-dur", "Duração em segundos (opcional)", editing?.duration, "number")}
+
+          <div class="settings-actions" style="margin-top:14px">
+            <button class="btn btn-primary" id="e-save">${editing ? "Salvar alterações" : "Adicionar episódio"}</button>
+            ${
+              editing
+                ? '<button class="btn btn-ghost" id="e-cancel">Cancelar edição</button>'
+                : '<button class="btn btn-ghost" id="e-newseason">＋ Começar nova temporada</button>'
+            }
+          </div>
+
+          ${editing ? "" : `
+            <h3 class="admin-sub">Adicionar vários de uma vez</h3>
+            <div class="settings-info" style="text-align:left;margin:0 0 10px">
+              Um por linha: Nome | link do vídeo. Numera sozinho a partir da temporada e do número acima.
+            </div>
+            <textarea id="e-bulk" class="admin-text" rows="5"
+              placeholder="Piloto | https://site.com/ep1.mp4&#10;Segundo episódio | https://site.com/ep2.mp4"></textarea>
+            <button class="btn btn-secondary" id="e-bulk-add" style="width:100%;margin-top:10px">Adicionar em lote</button>
+          `}
         </div>
       `, { focus: "#e-name" });
 
-      $("e-add").onclick = async () => {
-        const name = $("e-name").value.trim();
-        const video = $("e-video").value.trim();
+      const reopen = async () => {
+        await refreshCatalog();
+        openEpisodes(title.id);
+      };
 
-        if (!name || !video) {
-          showToast("Informe o nome e o link do vídeo.");
+      const fail = (error, prefix) => showToast(
+        error.code === "23505"
+          ? "Já existe um episódio com esse número nessa temporada."
+          : `${prefix}: ${error.message}`
+      );
+
+      $("e-save").onclick = async () => {
+        const name = $("e-name").value.trim();
+
+        if (!name) {
+          showToast("Informe o nome do episódio.");
           return;
         }
 
-        const { error } = await db.from("episodes").insert({
+        const row = {
           title_id: title.id,
           season: parseInt($("e-season").value, 10) || 1,
           episode_number: parseInt($("e-number").value, 10) || 1,
           name,
-          video_url: video,
-          thumbnail_url: $("e-thumb").value.trim() || null
-        });
+          description: $("e-desc").value.trim() || null,
+          video_url: $("e-video").value.trim() || null,
+          thumbnail_url: $("e-thumb").value.trim() || null,
+          duration: parseInt($("e-dur").value, 10) || null
+        };
 
-        if (error) {
-          showToast("Não foi possível adicionar: " + error.message);
-          return;
-        }
+        const { error } = editing
+          ? await db.from("episodes").update(row).eq("id", editing.id)
+          : await db.from("episodes").insert(row);
 
-        await refreshCatalog();
-        openEpisodes(title.id);
+        if (error) return fail(error, "Não foi possível salvar");
+
+        showToast(editing ? "Episódio atualizado." : "Episódio adicionado.");
+        reopen();
       };
+
+      const cancel = $("e-cancel");
+      if (cancel) cancel.onclick = () => openEpisodes(title.id);
+
+      const newSeason = $("e-newseason");
+
+      if (newSeason) {
+        newSeason.onclick = () => {
+          $("e-season").value = (last?.season || 0) + 1;
+          $("e-number").value = 1;
+          $("e-name").focus();
+        };
+      }
+
+      const bulk = $("e-bulk-add");
+
+      if (bulk) {
+        bulk.onclick = async () => {
+          const season = parseInt($("e-season").value, 10) || 1;
+          let number = parseInt($("e-number").value, 10) || 1;
+
+          const rows = $("e-bulk").value
+            .split("\n")
+            .map(line => line.trim())
+            .filter(Boolean)
+            .map(line => {
+              const [name, video] = line.split("|").map(part => part.trim());
+
+              return { title_id: title.id, season, episode_number: number++, name, video_url: video || null };
+            })
+            .filter(item => item.name);
+
+          if (!rows.length) {
+            showToast("Escreva ao menos uma linha: Nome | link.");
+            return;
+          }
+
+          const { error } = await db.from("episodes").insert(rows);
+
+          if (error) return fail(error, "Não foi possível adicionar");
+
+          showToast(`${rows.length} episódio(s) adicionado(s).`);
+          reopen();
+        };
+      }
+
+      modal.querySelectorAll("[data-edit]").forEach(button => {
+        button.onclick = () =>
+          openEpisodes(title.id, episodes.find(item => String(item.id) === button.dataset.edit));
+      });
 
       modal.querySelectorAll("[data-del]").forEach(button => {
         button.onclick = async () => {
@@ -4583,13 +4868,9 @@
 
           const { error } = await db.from("episodes").delete().eq("id", button.dataset.del);
 
-          if (error) {
-            showToast("Não foi possível excluir: " + error.message);
-            return;
-          }
+          if (error) return fail(error, "Não foi possível excluir");
 
-          await refreshCatalog();
-          openEpisodes(title.id);
+          reopen();
         };
       });
     }
