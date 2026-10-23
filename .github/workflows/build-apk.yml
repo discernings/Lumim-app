@@ -316,7 +316,7 @@ jobs:
 
           text = text.replace(
               "<application",
-              '<application android:usesCleartextTraffic="true" android:banner="@drawable/tv_banner"',
+              '<application android:largeHeap="true" android:usesCleartextTraffic="true" android:banner="@drawable/tv_banner"',
               1,
           )
 
@@ -398,17 +398,28 @@ jobs:
           # ---------- Ícone, banner de TV ----------
           from PIL import Image, ImageDraw, ImageOps
 
-          logo_path = pathlib.Path("www/1000002482.jpg")
+          logo_path = pathlib.Path("www/logo.png")
+
+
+          def leaf_rgba(size):
+              """Folha branca com fundo transparente."""
+              if logo_path.exists():
+                  return Image.open(logo_path).convert("RGBA").resize((size, size), Image.LANCZOS)
+
+              image = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+              pad = size * 0.28
+              ImageDraw.Draw(image).ellipse(
+                  [pad, pad, size - pad, size - pad], outline=(255, 255, 255, 255), width=max(2, size // 24)
+              )
+              return image
 
 
           def base_logo(size):
-              if logo_path.exists():
-                  return ImageOps.fit(Image.open(logo_path).convert("RGB"), (size, size))
-
+              """Folha branca sobre fundo preto (ícones, banner e splash)."""
               image = Image.new("RGB", (size, size), (0, 0, 0))
-              draw = ImageDraw.Draw(image)
-              pad = size * 0.28
-              draw.ellipse([pad, pad, size - pad, size - pad], outline=(255, 255, 255), width=max(2, size // 24))
+              inner = int(size * 0.72)
+              leaf = leaf_rgba(inner)
+              image.paste(leaf, ((size - inner) // 2, (size - inner) // 2), leaf)
               return image
 
 
@@ -431,7 +442,7 @@ jobs:
               fg = int(px * 108 / 48)
               canvas = Image.new("RGBA", (fg, fg), (0, 0, 0, 0))
               inner = int(fg * 0.6)
-              canvas.paste(base_logo(inner).convert("RGBA"), ((fg - inner) // 2, (fg - inner) // 2))
+              canvas.paste(leaf_rgba(inner), ((fg - inner) // 2, (fg - inner) // 2), leaf_rgba(inner))
               canvas.save(folder / "ic_launcher_foreground.png")
 
           background = res / "values" / "ic_launcher_background.xml"
