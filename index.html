@@ -3815,8 +3815,6 @@
                  <br /><br />
                  No ${escapeHtml(media.host)}, toque em <b>Compartilhar → Incorporar</b> e cole aqui o
                  link com <b>/embed/</b> ou o código inteiro.
-                 <br />
-                 <button id="openExternal" class="btn btn-secondary">Abrir no navegador</button>
                </div>
              </div>`
           : `<iframe src="${escapeAttribute(media.src)}" title="Vídeo incorporado"
@@ -3865,7 +3863,6 @@
 
           <div class="player-topbar">
             <h2>${escapeHtml(titleName(title))}${episode ? ` · T${episode.season} E${episode.episode_number}` : ""}</h2>
-            ${!isFile ? '<button id="playerExternal" class="player-control-button is-text">Abrir no navegador</button>' : ""}
             <button id="playerClose" class="player-control-button" aria-label="Fechar player">✕</button>
           </div>
 
@@ -3874,8 +3871,6 @@
       `, { close: false, className: "is-player", focus: "#playerStage" });
 
       $("playerClose").onclick = closeModal;
-      $("playerExternal")?.addEventListener("click", () => openLink(media.src));
-      $("openExternal")?.addEventListener("click", () => openLink(media.src));
 
       document.body.classList.add("playing");
       setFullscreen(true);
@@ -4255,12 +4250,6 @@
       return (match ? match[2].replace(/&amp;/g, "&") : String(value || "")).trim();
     }
 
-    function openLink(url) {
-      const browser = plugin("Browser");
-
-      if (browser?.open) browser.open({ url });
-      else window.open(url, "_blank");
-    }
 
     const tokyCache = {};
     const TOKY_HELP =
