@@ -3792,16 +3792,36 @@
       openPlayer(title, url);
     }
 
-    function openPlayer(title, url, episode = null) {
-      const media = normalizeVideoUrl(url);
+    async function openPlayer(title, url, episode = null) {
+      let media = normalizeVideoUrl(url);
+
+      if (media.type === "external") {
+        showToast("Preparando o vídeo…");
+
+        const embed = await resolveTokyvideo(media.src);
+
+        if (embed) media = normalizeVideoUrl(embed);
+      }
+
       const isFile = media.type === "file";
 
       const body = isFile
         ? `<video id="lumimVideo" src="${escapeAttribute(media.src)}"
              autoplay playsinline preload="auto"></video>`
-        : `<iframe src="${escapeAttribute(media.src)}" title="Vídeo incorporado"
-             allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
-             allowfullscreen></iframe>`;
+        : media.type === "external"
+          ? `<div class="video-error">
+               <div>
+                 Este é o link da <b>página</b> do ${escapeHtml(media.host)}, que não toca dentro do app.
+                 <br /><br />
+                 No ${escapeHtml(media.host)}, toque em <b>Compartilhar → Incorporar</b> e cole aqui o
+                 link com <b>/embed/</b> ou o código inteiro.
+                 <br />
+                 <button id="openExternal" class="btn btn-secondary">Abrir no navegador</button>
+               </div>
+             </div>`
+          : `<iframe src="${escapeAttribute(media.src)}" title="Vídeo incorporado"
+               allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+               allowfullscreen></iframe>`;
 
       const controls = isFile
         ? `
@@ -3845,6 +3865,7 @@
 
           <div class="player-topbar">
             <h2>${escapeHtml(titleName(title))}${episode ? ` · T${episode.season} E${episode.episode_number}` : ""}</h2>
+            ${!isFile ? '<button id="playerExternal" class="player-control-button is-text">Abrir no navegador</button>' : ""}
             <button id="playerClose" class="player-control-button" aria-label="Fechar player">✕</button>
           </div>
 
@@ -3853,6 +3874,8 @@
       `, { close: false, className: "is-player", focus: "#playerStage" });
 
       $("playerClose").onclick = closeModal;
+      $("playerExternal")?.addEventListener("click", () => openLink(media.src));
+      $("openExternal")?.addEventListener("click", () => openLink(media.src));
 
       document.body.classList.add("playing");
       setFullscreen(true);
@@ -3906,7 +3929,7 @@
       };
 
       const toggle = () => {
-        if (video.paused) video.play().catch(sync);
+        if (video.paused) video.play()?.catch?.(sync);
         else video.pause();
       };
 
@@ -4045,7 +4068,7 @@
         ui.error.classList.add("hidden");
         ui.loading.classList.remove("hidden");
         video.load();
-        video.play().catch(sync);
+        video.play()?.catch?.(sync);
       };
 
       stage.addEventListener("pointermove", event => {
@@ -4072,7 +4095,7 @@
         playButton: ui.play
       };
 
-      video.play().catch(sync);
+      video.play()?.catch?.(sync);
     }
 
     function playerKey(event) {
@@ -4101,7 +4124,7 @@
           return true;
 
         case "MediaPlay":
-          video.play().catch(() => {});
+          video.play()?.catch?.(() => {});
           return true;
 
         case "MediaPause":
@@ -4225,8 +4248,73 @@
       }
     }
 
+    /* Aceita o código <iframe ...> inteiro e extrai o link (src) */
+    function extractIframeSrc(value) {
+      const match = String(value || "").match(/<iframe[^>]*\ssrc\s*=\s*(["'])(.*?)\1/i);
+
+      return (match ? match[2].replace(/&amp;/g, "&") : String(value || "")).trim();
+    }
+
+    function openLink(url) {
+      const browser = plugin("Browser");
+
+      if (browser?.open) browser.open({ url });
+      else window.open(url, "_blank");
+    }
+
+    const tokyCache = {};
+    const TOKY_HELP =
+      "Não consegui converter o link do Tokyvideo aqui. No Tokyvideo toque em Compartilhar → Incorporar e cole o código.";
+
+    /* O número do vídeo aparece na imagem de capa da página; é o mesmo do /embed/ */
+    async function resolveTokyvideo(pageUrl) {
+      if (tokyCache[pageUrl]) return tokyCache[pageUrl];
+
+      try {
+        let html = "";
+        const http = plugin("CapacitorHttp");
+
+        if (http?.get) {
+          const response = await http.get({ url: pageUrl, headers: { Accept: "text/html" } });
+          html = typeof response?.data === "string" ? response.data : "";
+        } else {
+          html = await (await fetch(pageUrl)).text();
+        }
+
+        const id = (html.match(/tokyvideo\.com\/videos\/\d+\/(\d+)\//) || [])[1];
+
+        if (!id) return null;
+
+        const first = new URL(pageUrl).pathname.split("/")[1] || "";
+        const lang = /^[a-z]{2}$/i.test(first) ? first.toLowerCase() : "br";
+
+        return (tokyCache[pageUrl] = `https://www.tokyvideo.com/${lang}/embed/${id}`);
+      } catch {
+        return null;
+      }
+    }
+
+    /* Usado ao salvar: converte link de página do Tokyvideo; falha com erro se não conseguir */
+    async function prepareVideo(raw) {
+      const value = extractIframeSrc(raw);
+
+      if (!value) return "";
+
+      const media = normalizeVideoUrl(value);
+
+      if (media.type !== "external") return value;
+
+      const embed = await resolveTokyvideo(media.src);
+
+      if (!embed) throw new Error("tokyvideo");
+
+      return embed;
+    }
+
     function normalizeVideoUrl(url) {
-      const value = String(url || "").trim();
+      let value = extractIframeSrc(url);
+
+      if (value.startsWith("//")) value = `https:${value}`;
 
       const youtube = getYoutubeId(value);
 
@@ -4244,6 +4332,26 @@
           type: "vimeo",
           src: `https://player.vimeo.com/video/${vimeo}?autoplay=1`
         };
+      }
+
+      let host = "";
+      let path = "";
+
+      try {
+        const parsed = new URL(value);
+
+        host = parsed.hostname.replace(/^www\./, "");
+        path = parsed.pathname;
+      } catch {}
+
+      /* Link da página do Tokyvideo: não dá para tocar dentro do app, só o /embed/ */
+      if (/(^|\.)tokyvideo\./i.test(host) && !/\/embed\//i.test(path)) {
+        return { type: "external", src: value, host: "Tokyvideo" };
+      }
+
+      /* Qualquer link de incorporação (Tokyvideo, Dailymotion, Streamable, etc.) */
+      if (/\/embed(\/|\?|$)|\/preview(\?|$)|\/player\//i.test(path + value.slice(value.indexOf("?") >= 0 ? value.indexOf("?") : value.length))) {
+        return { type: "embed", src: value };
       }
 
       return { type: "file", src: value };
@@ -4591,7 +4699,7 @@
           ${field("ft-desc", "Descrição", title?.description)}
           ${field("ft-poster", "Link do pôster (imagem vertical)", title?.poster_url)}
           ${field("ft-back", "Link do fundo (imagem horizontal)", title?.backdrop_url)}
-          ${field("ft-video", "Link do vídeo (só para filmes; série usa os episódios)", title?.video_url)}
+          ${field("ft-video", "Link do vídeo ou código de incorporação (só filmes; série usa os episódios)", title?.video_url)}
           ${field("ft-trailer", "Link do trailer (opcional)", title?.trailer_url)}
           ${field("ft-dur", "Duração em segundos (opcional)", title?.duration, "number")}
 
@@ -4642,14 +4750,25 @@
         return;
       }
 
+      let videoUrl;
+      let trailerUrl;
+
+      try {
+        videoUrl = await prepareVideo(read("ft-video"));
+        trailerUrl = await prepareVideo(read("ft-trailer"));
+      } catch {
+        showToast(TOKY_HELP);
+        return;
+      }
+
       const row = {
         [nameKey]: read("ft-name"),
         type: $("ft-type").value,
         description: read("ft-desc") || null,
         poster_url: read("ft-poster") || null,
         backdrop_url: read("ft-back") || null,
-        video_url: read("ft-video") || null,
-        trailer_url: read("ft-trailer") || null,
+        video_url: videoUrl || null,
+        trailer_url: trailerUrl || null,
         featured: $("ft-feat").checked,
         is_series: $("ft-type").value === "Série"
       };
@@ -4747,7 +4866,7 @@
           ${field("e-number", "Número do episódio", editing?.episode_number ?? (last ? last.episode_number + 1 : 1), "number")}
           ${field("e-name", "Nome do episódio", editing?.name)}
           ${field("e-desc", "Descrição (opcional)", editing?.description)}
-          ${field("e-video", "Link do vídeo (mp4, YouTube ou Vimeo)", editing?.video_url)}
+          ${field("e-video", "Link do vídeo ou código de incorporação (mp4, YouTube, Vimeo, /embed/)", editing?.video_url)}
           ${field("e-thumb", "Link da miniatura (opcional)", editing?.thumbnail_url)}
           ${field("e-dur", "Duração em segundos (opcional)", editing?.duration, "number")}
 
@@ -4763,7 +4882,7 @@
           ${editing ? "" : `
             <h3 class="admin-sub">Adicionar vários de uma vez</h3>
             <div class="settings-info" style="text-align:left;margin:0 0 10px">
-              Um por linha: Nome | link do vídeo. Numera sozinho a partir da temporada e do número acima.
+              Um por linha: Nome | link do vídeo (ou código de incorporação). Numera sozinho a partir da temporada e do número acima.
             </div>
             <textarea id="e-bulk" class="admin-text" rows="5"
               placeholder="Piloto | https://site.com/ep1.mp4&#10;Segundo episódio | https://site.com/ep2.mp4"></textarea>
@@ -4791,13 +4910,22 @@
           return;
         }
 
+        let videoUrl;
+
+        try {
+          videoUrl = await prepareVideo($("e-video").value);
+        } catch {
+          showToast(TOKY_HELP);
+          return;
+        }
+
         const row = {
           title_id: title.id,
           season: parseInt($("e-season").value, 10) || 1,
           episode_number: parseInt($("e-number").value, 10) || 1,
           name,
           description: $("e-desc").value.trim() || null,
-          video_url: $("e-video").value.trim() || null,
+          video_url: videoUrl || null,
           thumbnail_url: $("e-thumb").value.trim() || null,
           duration: parseInt($("e-dur").value, 10) || null
         };
@@ -4830,18 +4958,33 @@
       if (bulk) {
         bulk.onclick = async () => {
           const season = parseInt($("e-season").value, 10) || 1;
-          let number = parseInt($("e-number").value, 10) || 1;
+          const number = parseInt($("e-number").value, 10) || 1;
 
-          const rows = $("e-bulk").value
+          const parsed = $("e-bulk").value
             .split("\n")
             .map(line => line.trim())
             .filter(Boolean)
             .map(line => {
-              const [name, video] = line.split("|").map(part => part.trim());
+              const parts = line.split("|");
 
-              return { title_id: title.id, season, episode_number: number++, name, video_url: video || null };
+              return { name: (parts.shift() || "").trim(), raw: parts.join("|") };
             })
             .filter(item => item.name);
+
+          let rows = [];
+
+          try {
+            rows = await Promise.all(parsed.map(async (item, index) => ({
+              title_id: title.id,
+              season,
+              episode_number: number + index,
+              name: item.name,
+              video_url: (await prepareVideo(item.raw)) || null
+            })));
+          } catch {
+            showToast(TOKY_HELP);
+            return;
+          }
 
           if (!rows.length) {
             showToast("Escreva ao menos uma linha: Nome | link.");
